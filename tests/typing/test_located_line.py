@@ -1,4 +1,4 @@
-from manga_ocr.types import Line
+from manga_ocr.typing import Line
 
 
 def test_located_line_save_read(tmpdir):

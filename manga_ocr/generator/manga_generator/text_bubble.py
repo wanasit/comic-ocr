@@ -4,14 +4,13 @@ from typing import List, Optional
 from PIL import Image, ImageDraw, ImageFont
 
 from manga_ocr.generator.manga_generator import TextArea
-from manga_ocr.types import Rectangle
-from manga_ocr.types.images import Color, Drawable, to_draw
+from manga_ocr.typing import Rectangle, Color, Drawable, to_draw
 
 
 @dataclass
 class TextBubble(TextArea):
     bubble_padding: int = field(default=3, repr=False)
-    bubble_fill_color: Color = field(default='#ffffff', repr=False)
+    bubble_fill_color: Color = field(default='#fffffff9', repr=False)
     bubble_outline_width: int = field(default=1, repr=False)
     bubble_outline_color: Color = field(default='#000000', repr=False)
 

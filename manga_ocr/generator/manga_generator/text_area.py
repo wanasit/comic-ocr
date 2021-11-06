@@ -1,12 +1,9 @@
 from dataclasses import dataclass, field
-from random import Random
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import ImageFont
 
-from manga_ocr.types import Rectangle, Point, Size, Line
-from manga_ocr.types.images import to_draw, Drawable, Color
-
+from manga_ocr.typing import Rectangle, Point, Size, Line, Drawable, Color, to_draw
 
 
 @dataclass
@@ -81,6 +78,7 @@ class TextArea:
     def draw_background(self, image: Drawable):
         pass
 
+
 def _text_wrap(text: str, font: ImageFont, max_width: float) -> List[str]:
     lines = []
     for line in text.split('\n'):
@@ -110,5 +108,3 @@ def _line_wrap(line: str, font: ImageFont, max_width: float) -> List[str]:
         lines.append(line)
         remaining = remaining.strip()
     return lines
-
-

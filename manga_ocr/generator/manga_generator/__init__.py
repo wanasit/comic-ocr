@@ -9,8 +9,7 @@ from PIL import ImageFont
 from manga_ocr.generator.manga_generator.text_area import TextArea
 from manga_ocr.generator.manga_generator.text_bubble import TextBubble
 from manga_ocr.generator.manga_generator.text_rect import TextRect
-from manga_ocr.types import Rectangle, Point
-from manga_ocr.types.images import Drawable
+from manga_ocr.typing import Rectangle, Point, Drawable
 from manga_ocr.utils import load_images, load_texts
 
 

@@ -10,5 +10,5 @@ Color = Union[str, Tuple[int, int, int, int]]
 
 def to_draw(input: Drawable) -> ImageDraw.Draw:
     if isinstance(input, Image.Image):
-        return ImageDraw.Draw(input)
+        return ImageDraw.Draw(input, 'RGBA')
     return input

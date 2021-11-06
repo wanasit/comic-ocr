@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
 
 from manga_ocr.generator.manga_generator import TextArea
-from manga_ocr.types.images import Color, Drawable, to_draw
+from manga_ocr.typing import Color, Drawable, to_draw
 
 
 @dataclass
 class TextRect(TextArea):
     rect_padding: int = field(default=3)
-    rect_fill_color: Color = field(default=(255, 255, 255, 0))
+    rect_fill_color: Color = field(default=(255, 255, 255, 250))
     rect_outline_width: int = field(default=1)
     rect_outline_color: Color = field(default='#000000')
 

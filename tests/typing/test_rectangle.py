@@ -1,4 +1,4 @@
-from manga_ocr.types import Rectangle
+from manga_ocr.typing import Rectangle
 
 
 def test_rect_basic():

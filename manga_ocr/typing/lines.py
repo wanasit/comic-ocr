@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from typing import Tuple, List
-from manga_ocr.types import Rectangle, RectangleLike
+from manga_ocr.typing import Rectangle, RectangleLike
 
 
 class Line(tuple):
