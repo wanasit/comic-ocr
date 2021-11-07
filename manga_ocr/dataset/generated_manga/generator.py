@@ -6,10 +6,10 @@ from typing import Optional, Any, List, Tuple
 from PIL import Image, ImageDraw
 from PIL import ImageFont
 
-from manga_ocr.generator.manga_generator.text_area import TextArea
-from manga_ocr.generator.manga_generator.text_bubble import TextBubble
-from manga_ocr.generator.manga_generator.text_rect import TextRect
-from manga_ocr.typing import Rectangle, Point, Drawable
+from manga_ocr.dataset.generated_manga.text_area import TextArea
+from manga_ocr.dataset.generated_manga.text_bubble import TextBubble
+from manga_ocr.dataset.generated_manga.text_rect import TextRect
+from manga_ocr.typing import Rectangle, Point, Drawable, Size
 from manga_ocr.utils import load_images, load_texts
 
 
@@ -22,6 +22,7 @@ class MangaGenerator():
 
     random_salt: str = ''
     current_random_seed: float = 0
+    output_size: Size = Size.of(768, 768)
 
     @staticmethod
     def create(
@@ -43,13 +44,11 @@ class MangaGenerator():
             random_salt=random_salt
         )
 
-    def generate(self,
-                 random_seed: Optional[Any] = None,
-                 output_size = (768, 768)
-    ):
+    def generate(self, random_seed: Optional[Any] = None, output_size: Optional[Size] = None):
         if not random_seed:
             random_seed = self.current_random_seed
 
+        output_size = output_size if output_size else self.output_size
         random = Random(f'{self.random_salt}_{random_seed}')
         self.current_random_seed = random.random()
 
@@ -59,7 +58,7 @@ class MangaGenerator():
             choices_drawings=self.choices_drawings,
             choices_texts=self.choices_texts,
             choices_fonts=self.choices_fonts,
-            choices_text_counts=self.choices_text_counts
+            choices_text_counts=self.choices_text_counts,
         )
 
 
@@ -183,7 +182,7 @@ def _create_random_text_area(
         bound: Rectangle,
         text: str,
         font: ImageFont,
-        bubble_to_rect_ratio=2/1
+        bubble_to_rect_ratio=2 / 1
 ) -> TextArea:
     xy = Point.of(
         x=random.randint(bound.left + 10, bound.right - 100),
@@ -195,7 +194,6 @@ def _create_random_text_area(
         return TextRect(xy, text=text, font=font, max_width=width)
     else:
         return TextBubble(xy, text=text, font=font, max_width=width)
-
 
 
 if __name__ == "__main__":

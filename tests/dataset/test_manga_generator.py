@@ -1,4 +1,4 @@
-from manga_ocr.generator.manga_generator import MangaGenerator
+from manga_ocr.dataset.generated_manga import MangaGenerator
 
 
 def test_manga_generator():

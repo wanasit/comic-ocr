@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from manga_ocr.generator.manga_generator import TextArea
+from manga_ocr.dataset.generated_manga.text_area import TextArea
 from manga_ocr.typing import Color, Drawable, to_draw
 
 
