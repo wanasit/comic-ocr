@@ -126,3 +126,19 @@ def train(
                 epoch_callback()
 
     return (training_losses, validation_losses) if validation_dataset else (training_losses, None)
+
+
+if __name__ == '__main__':
+    module_path = os.path.dirname(__file__)
+
+    generator_input_directory = module_path + '/../../../data'
+    generator_output_directory = module_path + '/../../../data/output'
+
+    generator = GeneratedMangaDataset.load(generator_input_directory)
+
+    input_images = load_images(module_path + "/../../out/generate/input/*.jpg")
+    output_images = load_images(module_path + "/../../out/generate/output/*.jpg")
+
+    model = ConvUnet()
+    input = model.image_to_input(input_images[0]).unsqueeze(0)
+    output_char, output_mask = model(input)

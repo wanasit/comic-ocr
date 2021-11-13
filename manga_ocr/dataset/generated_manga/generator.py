@@ -119,6 +119,15 @@ def _draw_random_drawing(
         i = random.randint(0, len(choices_drawings) - 1)
         main_drawing = choices_drawings[i].copy()
 
+        if random.random() > 0.2:
+            random_width = max(100, int(random.random() * main_drawing.width))
+            main_drawing = _random_resize_to_width(random, main_drawing, random_width)
+
+        if main_drawing.height > 100 and random.random() > 0.4:
+            crop_top = max(0, random.randint(-300, main_drawing.height - 100))
+            crop_bottom = min(main_drawing.height, random.randint(crop_top + 100, main_drawing.height + 100))
+            main_drawing = main_drawing.crop((0, crop_top, main_drawing.width, crop_bottom))
+
         if main_drawing.width + 2 * padding > bound.width:
             main_drawing = _random_resize_to_width(random, main_drawing, bound.width - 2 * padding)
 
@@ -132,11 +141,15 @@ def _draw_random_drawing(
         row += main_drawing.height + padding
 
 
-def _random_resize_to_width(random: Random, image: Image.Image, width: float):
-    # Todo: random resize vs crop, if crop, random crop location
-    ratio = (width / float(image.size[0]))
-    height = int((float(image.size[1]) * float(ratio)))
-    return image.resize((width, height))
+def _random_resize_to_width(random: Random, image: Image.Image, width: int):
+    if random.random() > 0.5:
+        ratio = (width / float(image.size[0]))
+        height = int((float(image.size[1]) * float(ratio)))
+        return image.resize((width, height))
+
+    crop_left = random.randint(0, image.width - width)
+    crop_right = crop_left + width
+    return image.crop((crop_left, 0, crop_right, image.height))
 
 
 def _draw_non_overlap_text_areas(
