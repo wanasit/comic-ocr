@@ -10,8 +10,8 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
 from manga_ocr.dataset.generated_manga import DEFAULT_CHAR_ALPHA, DEFAULT_LINE_ALPHA
-from manga_ocr.text.localization import divine_rect_into_overlapping_tiles
-from manga_ocr.text.transforms import AddGaussianNoise
+from manga_ocr.models.localization import divine_rect_into_overlapping_tiles
+from manga_ocr.models.transforms import AddGaussianNoise
 from manga_ocr.typing import Size
 from manga_ocr.utils import load_images
 
@@ -44,7 +44,7 @@ class LocalizationModel(nn.Module):
 
     @property
     def image_size(self) -> Size:
-        return Size.of(768, 768)
+        return Size.of(750, 750)
 
     def compute_loss(self, dataset_batch, criterion=nn.BCEWithLogitsLoss(), char_pred_weight=0.5,
                      line_pre_weight=0.5) -> Tensor:

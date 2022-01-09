@@ -6,7 +6,7 @@ from torch import nn
 
 import torch.nn.functional as F
 
-from manga_ocr.text.localization.localization_model import LocalizationModel
+from manga_ocr.models.localization.localization_model import LocalizationModel
 
 
 class ConvUnet(LocalizationModel):
