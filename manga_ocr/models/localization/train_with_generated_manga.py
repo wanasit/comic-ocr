@@ -10,8 +10,10 @@ from tqdm import tqdm
 from manga_ocr.models.localization.conv_unet.conv_unet import ConvUnet
 from manga_ocr.models.localization.localization_dataset import LocalizationDataset
 from manga_ocr.models.localization.localization_model import LocalizationModel
+from manga_ocr.utils import get_path_project_dir
 
 logger = logging.getLogger(__name__)
+
 
 def train(
         model: LocalizationModel,
@@ -77,10 +79,9 @@ def train(
 
 if __name__ == '__main__':
     path_current_module = os.path.dirname(__file__)
-    path_data_directory = os.path.join(path_current_module, '/../../../data')
 
-    path_dataset = path_data_directory + '/output/generate_manga_dataset'
-    path_output_model = path_data_directory + '/output/models/localization.bin'
+    path_dataset = get_path_project_dir('data/output/generate_manga_dataset')
+    path_output_model = get_path_project_dir('data/output/models/localization.bin')
 
     if os.path.exists(path_output_model):
         print('Loading an existing model...')

@@ -7,6 +7,7 @@ from torch import nn
 import torch.nn.functional as F
 
 from manga_ocr.models.localization.localization_model import LocalizationModel
+from manga_ocr.utils import load_images
 
 
 class ConvUnet(LocalizationModel):
@@ -107,5 +108,5 @@ if __name__ == '__main__':
     output_images = load_images(module_path + "/../../../out/generate/output/*.jpg")
 
     model = ConvUnet()
-    input = model.image_to_input(input_images[0]).unsqueeze(0)
-    output_char, output_mask = model(input)
+    #input = model.image_to_input(input_images[0]).unsqueeze(0)
+    #output_char, output_mask = model(input)

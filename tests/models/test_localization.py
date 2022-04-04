@@ -10,7 +10,6 @@ from manga_ocr.typing import Size, Rectangle
 
 
 def test_loading_generated_manga_dataset(tmpdir):
-
     dataset_dir = tmpdir.join('dataset')
     generated_manga.create_dataset(dataset_dir, output_count=5, output_size=Size.of(500, 500))
 
@@ -26,7 +25,6 @@ def test_loading_generated_manga_dataset(tmpdir):
 
 
 def test_loading_generated_manga_dataset_with_resize(tmpdir):
-
     dataset_dir = tmpdir.join('dataset')
     generated_manga.create_dataset(dataset_dir, output_count=5, output_size=Size.of(500, 500))
 
@@ -63,7 +61,6 @@ def test_training_conv_unet(tmpdir):
     train(model, training_dataset=dataset, tqdm_disable=True)
 
 
-
 def test_divine_rect_into_overlapping_tiles():
     tiles = divine_rect_into_overlapping_tiles(
         rect=Size.of(100, 100), tile_size=Size.of(50, 50), min_overlap_x=10, min_overlap_y=10)
@@ -82,19 +79,18 @@ def test_divine_rect_into_overlapping_tiles():
 
 
 def test_divine_rect_into_overlapping_tiles_large():
-        tiles = divine_rect_into_overlapping_tiles(
-            rect=Size.of(100, 100), tile_size=Size.of(100, 100), min_overlap_x=10, min_overlap_y=10)
-        assert list(tiles) == [Rectangle.of_size((100, 100))]
+    tiles = divine_rect_into_overlapping_tiles(
+        rect=Size.of(100, 100), tile_size=Size.of(100, 100), min_overlap_x=10, min_overlap_y=10)
+    assert list(tiles) == [Rectangle.of_size((100, 100))]
 
-        tiles = divine_rect_into_overlapping_tiles(
-            rect=Size.of(100, 100), tile_size=Size.of(120, 120), min_overlap_x=10, min_overlap_y=10)
-        assert list(tiles) == [Rectangle.of_size((120, 120), at=(0, 0))]
+    tiles = divine_rect_into_overlapping_tiles(
+        rect=Size.of(100, 100), tile_size=Size.of(120, 120), min_overlap_x=10, min_overlap_y=10)
+    assert list(tiles) == [Rectangle.of_size((120, 120), at=(0, 0))]
 
 
 def test_divine_rect_into_overlapping_tiles_real_cases():
-
     tiles = divine_rect_into_overlapping_tiles(
-        rect=Size.of(750, 1000), tile_size=Size.of(750, 750), min_overlap_x=750//4, min_overlap_y=750//4)
+        rect=Size.of(750, 1000), tile_size=Size.of(750, 750), min_overlap_x=750 // 4, min_overlap_y=750 // 4)
     assert list(tiles) == [(0, 0, 750, 750), (0, 250, 750, 1000)]
 
     tiles = divine_rect_into_overlapping_tiles(

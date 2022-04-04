@@ -10,7 +10,7 @@ from manga_ocr.dataset.generated_manga.text_area import TextArea
 from manga_ocr.dataset.generated_manga.text_bubble import TextBubble
 from manga_ocr.dataset.generated_manga.text_rect import TextRect
 from manga_ocr.typing import Rectangle, Point, Drawable, Size
-from manga_ocr.utils import load_images, load_texts
+from manga_ocr.utils import load_images, load_texts, get_path_example_dir
 
 
 @dataclass
@@ -87,19 +87,20 @@ project_root_dir = current_module_dir + '/../../..'
 
 
 def load_example_fonts() -> List[ImageFont.ImageFont]:
+    example_font_dir = get_path_example_dir() + '/fonts/'
     return \
-        [ImageFont.truetype(project_root_dir + '/example/fonts/Komika_Text.ttf', size=15)] + \
-        [ImageFont.truetype(project_root_dir + '/example/fonts/Komika_Text.ttf', size=20)] + \
-        [ImageFont.truetype(project_root_dir + '/example/fonts/Cool Cat.ttf', size=16)] * 3 + \
-        [ImageFont.truetype(project_root_dir + '/example/fonts/Cool Cat.ttf', size=21)]
+        [ImageFont.truetype(example_font_dir + 'Komika_Text.ttf', size=15)] + \
+        [ImageFont.truetype(example_font_dir + 'Komika_Text.ttf', size=20)] + \
+        [ImageFont.truetype(example_font_dir + 'Cool Cat.ttf', size=16)] * 3 + \
+        [ImageFont.truetype(example_font_dir + 'Cool Cat.ttf', size=21)]
 
 
 def load_example_drawing() -> List[Image.Image]:
-    return load_images(project_root_dir + '/example/drawings/*.jpg')
+    return load_images(get_path_example_dir() + '/drawings/*.jpg')
 
 
 def load_example_texts() -> List[str]:
-    return load_texts(project_root_dir + '/example/text/texts.txt')
+    return load_texts(get_path_example_dir() + '/text/texts.txt')
 
 
 # ------------------
