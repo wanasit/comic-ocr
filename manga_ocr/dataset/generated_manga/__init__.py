@@ -6,9 +6,20 @@ from PIL import Image
 from manga_ocr.dataset.generated_manga.generator import MangaGenerator
 from manga_ocr.dataset.generated_manga.text_area import TextArea
 from manga_ocr.typing import Color, Paragraph, Size, Line
+from manga_ocr.utils import write_json_dict, load_images, load_images_with_annotation, get_path_project_dir
+from manga_ocr.utils.nb_annotation import lines_to_nb_annotation_data, lines_from_nb_annotation_data
 
 DEFAULT_CHAR_ALPHA = 1.0
 DEFAULT_LINE_ALPHA = 0.6
+
+
+def load_dataset(dataset_dir: str) -> List[Tuple[Image.Image, Image.Image, List[Line]]]:
+    path = Path(dataset_dir)
+    images, line_annotations = load_images_with_annotation(path / 'image/*.jpg', path / 'line_annotation')
+    image_masks = load_images(path / 'image_mask/*.jpg')
+
+    return [(images[i], image_masks[i], lines_from_nb_annotation_data(line_annotations[i])) for i in range(len(images))]
+
 
 def create_dataset(
         dataset_dir: str,
@@ -21,16 +32,17 @@ def create_dataset(
     path = Path(dataset_dir)
     (path / 'image').mkdir(parents=True, exist_ok=True)
     (path / 'image_mask').mkdir(parents=True, exist_ok=True)
-    (path / 'paragraph').mkdir(parents=True, exist_ok=True)
+    (path / 'line_annotation').mkdir(parents=True, exist_ok=True)
 
     for i in range(output_count):
         image, text_areas = generator.generate(i, output_size=output_size)
         image_mask = _create_image_mask(image, text_areas)
-        paragraphs = [Paragraph.of(t.get_lines()) for t in text_areas]
+        lines = [line for t in text_areas for line in t.get_lines()]
 
         image.save(path / 'image' / '{:04}.jpg'.format(i))
         image_mask.save(path / 'image_mask' / '{:04}.jpg'.format(i))
-        Paragraph.save_paragraphs_to_file(path / 'paragraph' / '{:04}.json'.format(i), paragraphs)
+        write_json_dict(path / 'line_annotation' / '{:04}.json'.format(i), lines_to_nb_annotation_data(lines))
+
 
 def _create_image_mask(
         image,
@@ -47,4 +59,14 @@ def _create_image_mask(
 
 
 if __name__ == "__main__":
-    create_dataset('../../../data/output/generated_manage_test', output_count=10)
+    import shutil
+
+    dataset_dir = get_path_project_dir('data/output/generated_manage_test')
+    shutil.rmtree(dataset_dir)
+
+    create_dataset(dataset_dir, output_count=3)
+    dataset = load_dataset(dataset_dir)
+
+    print(dataset[0])
+    print(dataset[1])
+    print(dataset[2])

@@ -1,18 +1,12 @@
-import logging
-import os
-from typing import List, Optional, Callable
+from typing import List, Optional, Tuple, Iterable, Any
 
-import torch
 from PIL.Image import Image
-from torch import optim
-from torch.utils.data import Dataset, DataLoader
-from tqdm import tqdm
+from torch.utils.data import Dataset
 
-from manga_ocr.dataset.generated_manga import DEFAULT_LINE_ALPHA, DEFAULT_CHAR_ALPHA
+from manga_ocr.dataset.generated_manga import DEFAULT_LINE_ALPHA, DEFAULT_CHAR_ALPHA, load_dataset
 from manga_ocr.models.localization import divine_rect_into_overlapping_tiles
 from manga_ocr.models.localization.localization_model import image_mask_to_output_tensor, image_to_input_tensor
 from manga_ocr.typing import Size
-from manga_ocr.utils import load_images
 
 
 class LocalizationDataset(Dataset):
@@ -38,25 +32,23 @@ class LocalizationDataset(Dataset):
 
     @staticmethod
     def load_generated_manga_dataset(directory, image_size: Size = Size.of(500, 500)):
-        raw_images = load_images(os.path.join(directory, 'image/*.jpg'))
-        raw_image_masks = load_images(os.path.join(directory, 'image_mask/*.jpg'))
 
-        assert len(raw_images) > 0
-        assert len(raw_images) == len(raw_image_masks)
-        images, image_masks = LocalizationDataset._split_or_pad_images_into_size(raw_images, raw_image_masks,
-                                                                                 image_size)
+        dataset = load_dataset(directory)
+        assert len(dataset) > 0
+
+        images, image_masks = LocalizationDataset._split_or_pad_images_into_size(dataset, image_size)
         return LocalizationDataset(images=images, image_masks=image_masks)
 
     @staticmethod
-    def _split_or_pad_images_into_size(raw_images, raw_image_masks, image_size: Size = Size.of(500, 500)):
+    def _split_or_pad_images_into_size(dataset_images: Iterable[Tuple[Image, Image, Any]], image_size: Size = Size.of(500, 500)):
         output_images = []
         output_raw_image_masks = []
 
         tile_overlap_x = image_size.width // 4
         tile_overlap_y = image_size.width // 4
-        for i in range(len(raw_images)):
-            image = raw_images[i]
-            image_mask = raw_image_masks[i]
+        for row in dataset_images:
+            image = row[0]
+            image_mask = row[1]
 
             for tile in divine_rect_into_overlapping_tiles(
                     Size(image.size), tile_size=image_size, min_overlap_x=tile_overlap_x, min_overlap_y=tile_overlap_y):

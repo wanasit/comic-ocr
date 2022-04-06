@@ -4,6 +4,7 @@ from PIL.Image import Image
 
 from manga_ocr.typing import Line, Rectangle
 from manga_ocr.utils import load_images_with_annotation
+from manga_ocr.utils.nb_annotation import lines_from_nb_annotation_data
 
 
 def load_line_annotated_dataset(dataset_dir: str) -> List[Tuple[Image, List[Line]]]:
@@ -14,30 +15,7 @@ def load_line_annotated_dataset(dataset_dir: str) -> List[Tuple[Image, List[Line
         if not annotation_data:
             continue
 
-        lines = read_line_annotations(annotation_data)
+        lines = lines_from_nb_annotation_data(annotation_data)
         output.append((image, lines))
 
     return output
-
-
-def read_line_annotations(annotation_data: Dict) -> List[Line]:
-    """
-    annotation_data from labelling-notebook
-    https://githubplus.com/wanasit/labelling-notebook
-    """
-    lines = []
-    for a in annotation_data['annotations']:
-        line = _read_labelling_nb_annotation_line(a)
-        lines.append(line)
-
-    return lines
-
-
-def _read_labelling_nb_annotation_line(annotation) -> Line:
-    rect = _read_labelling_nb_annotation_rect(annotation)
-    text = annotation['text']
-    return Line.of(text, rect)
-
-
-def _read_labelling_nb_annotation_rect(annotation) -> Rectangle:
-    return Rectangle.of_xywh(annotation['x'], annotation['y'], annotation['width'], annotation['height'])

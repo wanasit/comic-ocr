@@ -60,6 +60,6 @@ class BidirectionalRNNBlock(nn.Module):
 if __name__ == '__main__':
     from manga_ocr.utils import load_image, get_path_example_dir
     recognizer = CRNN()
-    image = load_image(get_path_example_dir('annotated_manga/normal_01.jpg'))
+    image = load_image(get_path_example_dir('manga_annotated/normal_01.jpg'))
     input = image_to_single_input_tensor(recognizer.input_height, image)
     recognizer(input.unsqueeze(0))

@@ -38,15 +38,3 @@ class Paragraph(tuple):
     @property
     def text(self) -> str:
         return self[0]
-
-    @staticmethod
-    def read_paragraphs_from_file(filename) -> List[Paragraph]:
-        with open(filename, 'r') as f:
-            json_paragraphs = json.load(f)
-            return [Paragraph.of(p) for p in json_paragraphs]
-
-    @staticmethod
-    def save_paragraphs_to_file(filename, paragraphs: List[Paragraph]):
-        with open(filename, 'w') as f:
-            f.write(json.dumps(paragraphs))
-            f.write('\n')

@@ -2,10 +2,10 @@ from manga_ocr.dataset.annotated_manga import load_line_annotated_dataset
 from manga_ocr.utils import get_path_example_dir
 
 
-def test_load_dataset():
+def test_load_example_dataset():
 
-    example_annotated_dataset = get_path_example_dir() + '/annotated_manga'
-    dataset = load_line_annotated_dataset(example_annotated_dataset)
+    example_dataset_dir = get_path_example_dir('manga_annotated')
+    dataset = load_line_annotated_dataset(example_dataset_dir)
 
     assert len(dataset) == 1
 

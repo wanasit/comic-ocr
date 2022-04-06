@@ -10,7 +10,7 @@ from manga_ocr.utils import get_path_example_dir, load_image
 
 
 def test_image_to_single_input_tensor_scale_down():
-    image = load_image(get_path_example_dir('annotated_manga/normal_01.jpg'))
+    image = load_image(get_path_example_dir('manga_annotated/normal_01.jpg'))
     assert image.size == (707, 1000)
     input_height = 30
 
@@ -22,7 +22,7 @@ def test_image_to_single_input_tensor_scale_down():
 
 
 def test_image_to_single_input_tensor_scale_up():
-    image = load_image(get_path_example_dir('annotated_manga/normal_01.jpg'))
+    image = load_image(get_path_example_dir('manga_annotated/normal_01.jpg'))
     assert image.size == (707, 1000)
     input_height = 2000
 
@@ -34,7 +34,7 @@ def test_image_to_single_input_tensor_scale_up():
 
 
 def test_loading_annotated_dataset():
-    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('annotated_manga'))
+    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'))
 
     assert len(dataset) > 0
 
@@ -54,7 +54,7 @@ def test_loading_annotated_dataset():
 
 
 def test_loading_annotated_dataset_with_loader():
-    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('annotated_manga'))
+    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'))
     train_dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
     batch = next(iter(train_dataloader))
 
@@ -66,7 +66,7 @@ def test_loading_annotated_dataset_with_loader():
 def test_recognizer_basic():
     recognizer = CRNN()
 
-    image = load_image(get_path_example_dir('annotated_manga/normal_01.jpg'))
+    image = load_image(get_path_example_dir('manga_annotated/normal_01.jpg'))
     input = image_to_single_input_tensor(recognizer.input_height, image)
 
     output = recognizer(input.unsqueeze(0))[0]
@@ -77,7 +77,7 @@ def test_recognizer_basic():
 def test_recognizer_loss_computing():
     recognizer = CRNN()
 
-    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('annotated_manga'))
+    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'))
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
 
     batch = next(iter(dataloader))
