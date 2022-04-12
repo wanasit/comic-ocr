@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from manga_ocr.models.recognition import SUPPORT_DICT_SIZE, encode
 from manga_ocr.models.recognition.crnn.crnn import CRNN
 from manga_ocr.models.recognition.recognition_dataset import RecognitionDataset
-from manga_ocr.models.recognition.recognition_module import image_to_single_input_tensor, DEFAULT_INPUT_HEIGHT
+from manga_ocr.models.recognition.recognition_module import image_to_single_input_tensor, compute_ctc_loss, DEFAULT_INPUT_HEIGHT
 
 from manga_ocr.utils import get_path_example_dir, load_image
 
@@ -53,7 +53,27 @@ def test_loading_annotated_dataset():
     assert row['output_length'].tolist() == [len('DEPRESSION')]
 
 
-def test_loading_annotated_dataset_with_loader():
+def test_loading_generated_dataset():
+    dataset = RecognitionDataset.load_generated_dataset(get_path_example_dir('manga_generated'))
+
+    assert len(dataset) > 0
+
+    row = dataset[0]
+    assert row.keys() == {'input', 'output', 'output_length'}
+    assert row['input'].shape[0] == 3
+    assert row['input'].shape[1] == DEFAULT_INPUT_HEIGHT == 24
+
+    input_width = row['input'].shape[2]
+    assert input_width > 0
+
+    assert row['output'].shape[0] == dataset.output_max_len
+    assert row['output'].tolist() == encode('Hehe', padded_output_size=dataset.output_max_len)
+
+    assert row['output_length'].shape[0] == 1
+    assert row['output_length'].tolist() == [len('Hehe')]
+
+
+def test_dataset_with_loader():
     dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'))
     train_dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
     batch = next(iter(train_dataloader))
@@ -86,3 +106,18 @@ def test_recognizer_loss_computing():
     assert loss.shape == ()
 
 
+def test_ctc_loss():
+    encoded_chars = encode(text="Hello", padded_output_size=10)
+    assert encoded_chars == [46, 17, 24, 24, 27, 0, 0, 0, 0, 0]
+
+    expected_output = torch.Tensor(encoded_chars).type(torch.int64)
+    expected_output_length = torch.Tensor([5]).type(torch.int64)
+
+    output_sequence = torch.as_tensor(encoded_chars)
+    model_output = torch.nn.functional.one_hot(output_sequence, num_classes=SUPPORT_DICT_SIZE).type(torch.float)
+
+    loss = compute_ctc_loss(
+        model_output.unsqueeze(0),
+        expected_output.unsqueeze(0),
+        expected_output_length.unsqueeze(0)
+    )

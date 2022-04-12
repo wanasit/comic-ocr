@@ -5,7 +5,7 @@ from manga_ocr.models.localization import divine_rect_into_overlapping_tiles
 from manga_ocr.models.localization.conv_unet.conv_unet import ConvUnet
 from manga_ocr.models.localization.localization_dataset import LocalizationDataset
 from manga_ocr.models.localization.localization_model import LocalizationModel, image_to_input_tensor
-from manga_ocr.models.localization.train_with_generated_manga import train
+from manga_ocr.models.localization.train import train
 from manga_ocr.typing import Size, Rectangle
 from manga_ocr.utils import get_path_example_dir
 

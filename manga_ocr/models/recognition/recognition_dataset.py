@@ -1,10 +1,12 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import torch
-from PIL.Image import Image
+from PIL import Image
 from torch.utils.data import Dataset
 
-from manga_ocr.dataset.annotated_manga import load_line_annotated_dataset
+import manga_ocr.dataset.annotated_manga as annotated_manga
+import manga_ocr.dataset.generated_manga as generated_manga
+
 from manga_ocr.models.recognition import encode
 from manga_ocr.models.recognition.recognition_module import image_to_single_input_tensor, DEFAULT_INPUT_HEIGHT
 
@@ -13,9 +15,8 @@ class RecognitionDataset(Dataset):
     """
     TODO: support input_max_width and add custom padding logic for images
     """
-
     def __init__(self,
-                 line_images: List[Image],
+                 line_images: List[Image.Image],
                  line_texts: List[str],
                  input_height: int = DEFAULT_INPUT_HEIGHT,
                  ):
@@ -39,13 +40,44 @@ class RecognitionDataset(Dataset):
             'output_length': output_length_tensor
         }
 
+    def get_line_image(self, idx):
+        return self.line_images[idx]
+
+    def get_line_text(self, idx):
+        return self.line_texts[idx]
+
+
+    def subset(self, from_idx: Optional[int] = None, to_dix: Optional[int] = None):
+        from_idx = from_idx if from_idx is not None else 0
+        to_dix = to_dix if to_dix is not None else len(self.line_images)
+        return RecognitionDataset(self.line_images[from_idx:to_dix], self.line_texts[from_idx:to_dix], self.input_height)
+
     @staticmethod
     def load_annotated_dataset(directory: str, input_height: int = DEFAULT_INPUT_HEIGHT):
         line_images = []
         line_texts = []
 
-        line_annotated_dataset = load_line_annotated_dataset(directory)
+        line_annotated_dataset = annotated_manga.load_line_annotated_dataset(directory)
         for image, lines in line_annotated_dataset:
+
+            for line in lines:
+                # todo: add random padding
+                line_texts.append(line.text)
+                line_images.append(image.crop(line.location))
+
+        return RecognitionDataset(
+            line_images=line_images,
+            line_texts=line_texts,
+            input_height=input_height
+        )
+
+    @staticmethod
+    def load_generated_dataset(directory: str, input_height: int = DEFAULT_INPUT_HEIGHT):
+        line_images = []
+        line_texts = []
+
+        generated_dataset = generated_manga.load_dataset(directory)
+        for image, _, lines in generated_dataset:
 
             for line in lines:
                 # todo: add random padding

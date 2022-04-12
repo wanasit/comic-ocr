@@ -1,32 +1,39 @@
 import logging
 import os
-from typing import Optional, Callable
+from typing import Optional, Callable, List
 
 import torch
+from PIL.Image import Image
 from torch import optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from manga_ocr.models.localization.conv_unet.conv_unet import ConvUnet
-from manga_ocr.models.localization.localization_dataset import LocalizationDataset
-from manga_ocr.models.localization.localization_model import LocalizationModel
+
+from manga_ocr.models.recognition.recognition_dataset import RecognitionDataset
+from manga_ocr.models.recognition.recognition_module import TextRecognizeModule, image_to_single_input_tensor
 from manga_ocr.utils import get_path_project_dir
 
 logger = logging.getLogger(__name__)
 
 
 def train(
-        model: LocalizationModel,
-        training_dataset: LocalizationDataset,
-        validation_dataset: Optional[LocalizationDataset] = None,
+        model: TextRecognizeModule,
+        training_dataset: RecognitionDataset,
+        validation_dataset: Optional[RecognitionDataset] = None,
         epoch_count: int = 1,
         epoch_callback: Optional[Callable] = None,
         tqdm_disable=False,
-        batch_size=10,
         optimizer=None
 ):
-    optimizer = optimizer if optimizer else optim.Adam(model.parameters(), lr=0.001)
-    training_dataloader = DataLoader(training_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+    # todo: support different batch szie
+    training_dataloader = DataLoader(training_dataset, batch_size=1, shuffle=True, num_workers=0)
+
+    lr = 0.02
+    weight_decay = 1e-5
+    momentum=0.9
+    clip_norm = 5
+    optimizer = optimizer if optimizer else torch.optim.SGD(model.parameters(), lr=lr, nesterov=True,
+                            weight_decay=weight_decay, momentum=momentum)
 
     training_losses = []
     validation_losses = []
@@ -43,10 +50,11 @@ def train(
                 loss = model.compute_loss(batch)
                 loss.backward()
 
+                torch.nn.utils.clip_grad_norm_(model.parameters(), clip_norm)
                 optimizer.step()
 
                 batch_loss = loss.item()
-                batch_size = batch['image'].size(0)
+                batch_size = batch['input'].size(0)
 
                 tepoch.set_postfix(training_batch_loss=batch_loss)
                 tepoch.update(batch_size)
@@ -59,7 +67,7 @@ def train(
                 validation_loss = 0.0
                 valid_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
                 for i_batch, batch in enumerate(valid_dataloader):
-                    batch_size = batch['image'].size(0)
+                    batch_size = batch['input'].size(0)
                     logger.debug(f'> Validating with {batch_size} samples')
                     with torch.no_grad():
                         loss = model.compute_loss(batch)
@@ -78,23 +86,29 @@ def train(
 
 
 if __name__ == '__main__':
-    path_current_module = os.path.dirname(__file__)
+    from manga_ocr.models.recognition.crnn.crnn import CRNN
 
     path_dataset = get_path_project_dir('data/output/generate_manga_dataset')
-    path_output_model = get_path_project_dir('data/output/models/localization.bin')
+    path_output_model = get_path_project_dir('data/output/models/recognizer.bin')
 
     if os.path.exists(path_output_model):
         print('Loading an existing model...')
         model = torch.load(path_output_model)
     else:
         print('Creating a new model...')
-        model = ConvUnet()
+        model = CRNN()
 
-    dataset = LocalizationDataset.load_generated_manga_dataset(path_dataset, image_size=model.image_size)
+    dataset = RecognitionDataset.load_generated_dataset(path_dataset)
     print(f'Loaded generated manga dataset of size {len(dataset)}...')
 
     validation_dataset = dataset.subset(to_dix=100)
-    training_dataset = dataset.subset(from_idx=100)
+    training_dataset = dataset.subset(from_idx=100, to_dix=200)
+
+    training_dataset.get_line_image(0).show()
+    training_dataset.get_line_image(1).show()
+    validation_dataset.get_line_image(0).show()
+    validation_dataset.get_line_image(1).show()
+
     train(model,
           training_dataset=training_dataset,
           validation_dataset=validation_dataset,
