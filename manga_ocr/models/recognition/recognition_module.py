@@ -132,7 +132,7 @@ if __name__ == '__main__':
     from manga_ocr.models.recognition.recognition_dataset import RecognitionDataset
     from manga_ocr.utils import get_path_project_dir
 
-    path_to_model = get_path_project_dir('data/output/models/recognizer.bin')
+    path_to_model = get_path_project_dir('data/output/models/recognition.bin')
     if os.path.exists(path_to_model):
         print('Loading an existing model...')
         model = torch.load(path_to_model)
@@ -140,20 +140,20 @@ if __name__ == '__main__':
         print('Creating a new model...')
         model = CRNN()
 
-    dataset = RecognitionDataset.load_generated_dataset(get_path_project_dir('example/manga_generated'))
+    dataset = RecognitionDataset.load_annotated_dataset(get_path_project_dir('example/manga_annotated'))
 
     line_image = dataset.get_line_image(0)
     line_text_expected = dataset.get_line_text(0)
     line_image.show()
 
     line_text_recognized = model.recognize(line_image)
-    print('Expected', line_text_expected)
-    print('Recognized', line_text_recognized)
+    print('Expected : ', line_text_expected)
+    print('Recognized : ', line_text_recognized)
 
     line_image = dataset.get_line_image(2)
     line_text_expected = dataset.get_line_text(2)
     line_image.show()
 
     line_text_recognized = model.recognize(line_image)
-    print('Expected', line_text_expected)
-    print('Recognized', line_text_recognized)
+    print('Expected : ', line_text_expected)
+    print('Recognized : ', line_text_recognized)

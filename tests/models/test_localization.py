@@ -17,7 +17,7 @@ def test_loading_generated_manga_dataset(tmpdir):
     dataset = LocalizationDataset.load_generated_manga_dataset(dataset_dir, image_size=Size.of(500, 500))
     assert len(dataset) > 0
 
-    train_dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=0)
+    train_dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=1)
     batch = next(iter(train_dataloader))
 
     assert batch['image'].shape == (2, 3, 500, 500)
@@ -32,7 +32,7 @@ def test_loading_generated_manga_dataset_with_resize(tmpdir):
     dataset = LocalizationDataset.load_generated_manga_dataset(dataset_dir, image_size=Size.of(200, 200))
     assert len(dataset) > 0
 
-    train_dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=0)
+    train_dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=1)
     batch = next(iter(train_dataloader))
 
     assert batch['image'].shape == (2, 3, 200, 200)
@@ -77,7 +77,7 @@ def test_divine_rect_into_overlapping_tiles_real_cases():
     assert list(tiles) == [(0, 0, 750, 750), (0, 375, 750, 1125), (0, 750, 750, 1500)]
 
 
-def test_conv_unet_loss():
+def test_conv_unet_forward():
     model = ConvUnet()
     assert model.image_size == (750, 750)
 
@@ -89,6 +89,16 @@ def test_conv_unet_loss():
     output_char, output_line = model(input_image)
     assert output_char.shape == (1, 1, 750, 750)
     assert output_line.shape == (1, 1, 750, 750)
+
+
+def test_conv_unet_loss():
+
+    model = ConvUnet()
+    assert model.image_size == (750, 750)
+
+    example_generated_dataset_dir = get_path_example_dir('manga_generated')
+    dataset = LocalizationDataset.load_generated_manga_dataset(
+        example_generated_dataset_dir, image_size=model.image_size)
 
     dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=0)
     batch = next(iter(dataloader))

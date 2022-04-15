@@ -1,37 +1,33 @@
 import os
-from typing import Callable, Tuple, List, Optional
+from typing import Callable, Tuple
 
 import numpy as np
 import torch
 from PIL import Image
-
-from torch import nn, optim, Tensor
-from torch.utils.data import Dataset, DataLoader
+from torch import nn, Tensor
 from torchvision import transforms
 
-from manga_ocr.dataset.generated_manga import DEFAULT_CHAR_ALPHA, DEFAULT_LINE_ALPHA
-from manga_ocr.models.localization import divine_rect_into_overlapping_tiles
 from manga_ocr.models.transforms import AddGaussianNoise
 from manga_ocr.typing import Size
 
-TRANSFORM_TO_TENSOR = transforms.ToTensor()
+TRANSFORM_TO_TENSOR = transforms.PILToTensor()
 TRANSFORM_TO_GRAY_SCALE = transforms.Grayscale()
 TRANSFORM_ADD_NOISE = AddGaussianNoise()
 
 
 def image_to_input_tensor(image):
-    input = TRANSFORM_TO_TENSOR(image)
+    input = TRANSFORM_TO_TENSOR(image).float() / 255
     return input
 
 
 def image_mask_to_output_tensor(image, threshold: float = 0.5):
-    output = TRANSFORM_TO_TENSOR(image)
+    output = image_to_input_tensor(image)
     output = TRANSFORM_TO_GRAY_SCALE(output)
     output = (output > threshold).float()
     return output
 
 def output_tensor_to_image_mask(tensor):
-    return Image.fromarray(np.uint8(tensor.numpy()[0] * 255), 'L')
+    return Image.fromarray(np.uint8(tensor.numpy()[0] * 255), 'L').convert('RGB')
 
 
 class LocalizationModel(nn.Module):
@@ -46,7 +42,7 @@ class LocalizationModel(nn.Module):
 
     @property
     def image_size(self) -> Size:
-        return Size.of(750, 750)
+        return Size.of(500, 500)
 
     def compute_loss(self, dataset_batch, criterion=nn.BCEWithLogitsLoss(), char_pred_weight=0.5,
                      line_pre_weight=0.5) -> Tensor:

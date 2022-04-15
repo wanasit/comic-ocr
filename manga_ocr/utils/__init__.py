@@ -55,7 +55,7 @@ def load_images(glob_file_pattern: PathLike) -> List[Image.Image]:
 
 def load_image(file: PathLike) -> Image.Image:
     with Image.open(file) as img:
-        return img.copy()
+        return img.copy().convert('RGB')
 
 
 def load_texts(text_file: PathLike):

@@ -25,9 +25,9 @@ class LocalizationDataset(Dataset):
             'mask_char': image_mask_to_output_tensor(self.image_masks[idx], DEFAULT_CHAR_ALPHA - 0.1)
         }
 
-    def subset(self, from_idx: Optional[int] = None, to_dix: Optional[int] = None):
+    def subset(self, from_idx: Optional[int] = None, to_idx: Optional[int] = None):
         from_idx = from_idx if from_idx is not None else 0
-        to_dix = to_dix if to_dix is not None else len(self.images)
+        to_dix = to_idx if to_idx is not None else len(self.images)
         return LocalizationDataset(self.images[from_idx:to_dix], self.image_masks[from_idx:to_dix])
 
     @staticmethod

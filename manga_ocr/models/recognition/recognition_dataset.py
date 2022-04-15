@@ -1,4 +1,5 @@
-from typing import List, Dict, Optional
+from random import Random
+from typing import List, Dict, Optional, Tuple, Union
 
 import torch
 from PIL import Image
@@ -15,6 +16,7 @@ class RecognitionDataset(Dataset):
     """
     TODO: support input_max_width and add custom padding logic for images
     """
+
     def __init__(self,
                  line_images: List[Image.Image],
                  line_texts: List[str],
@@ -46,24 +48,26 @@ class RecognitionDataset(Dataset):
     def get_line_text(self, idx):
         return self.line_texts[idx]
 
-
-    def subset(self, from_idx: Optional[int] = None, to_dix: Optional[int] = None):
+    def subset(self, from_idx: Optional[int] = None, to_idx: Optional[int] = None):
         from_idx = from_idx if from_idx is not None else 0
-        to_dix = to_dix if to_dix is not None else len(self.line_images)
-        return RecognitionDataset(self.line_images[from_idx:to_dix], self.line_texts[from_idx:to_dix], self.input_height)
+        to_idx = to_idx if to_idx is not None else len(self.line_images)
+        return RecognitionDataset(self.line_images[from_idx:to_idx], self.line_texts[from_idx:to_idx],
+                                  self.input_height)
 
     @staticmethod
-    def load_annotated_dataset(directory: str, input_height: int = DEFAULT_INPUT_HEIGHT):
+    def load_annotated_dataset(
+            directory: str,
+            input_height: int = DEFAULT_INPUT_HEIGHT,
+    ):
+        line_annotated_dataset = annotated_manga.load_line_annotated_dataset(directory)
+
         line_images = []
         line_texts = []
-
-        line_annotated_dataset = annotated_manga.load_line_annotated_dataset(directory)
         for image, lines in line_annotated_dataset:
 
             for line in lines:
-                # todo: add random padding
-                line_texts.append(line.text)
                 line_images.append(image.crop(line.location))
+                line_texts.append(line.text)
 
         return RecognitionDataset(
             line_images=line_images,
@@ -72,20 +76,50 @@ class RecognitionDataset(Dataset):
         )
 
     @staticmethod
-    def load_generated_dataset(directory: str, input_height: int = DEFAULT_INPUT_HEIGHT):
+    def load_generated_dataset(
+            directory: str,
+            input_height: int = DEFAULT_INPUT_HEIGHT,
+            random_padding_x: Union[int, Tuple[int, int]] = (0, 10),
+            random_padding_y: Union[int, Tuple[int, int]] = (2, 10),
+            random_padding_copy_count: int = 1,
+            random_seed: any = ''
+    ):
+        random_padding_x = (random_padding_x, random_padding_x) \
+            if isinstance(random_padding_x, int) else random_padding_x
+        random_padding_y = (random_padding_y, random_padding_y) \
+            if isinstance(random_padding_y, int) else random_padding_y
+        random = Random(random_seed)
+
+        generated_dataset = generated_manga.load_dataset(directory)
+
         line_images = []
         line_texts = []
 
-        generated_dataset = generated_manga.load_dataset(directory)
         for image, _, lines in generated_dataset:
-
             for line in lines:
-                # todo: add random padding
-                line_texts.append(line.text)
-                line_images.append(image.crop(line.location))
+                for padding_copy_i in range(random_padding_copy_count):
+
+                    padding_x = random.randint(random_padding_x[0], random_padding_x[1])
+                    padding_y = random.randint(random_padding_y[0], random_padding_y[1])
+                    rect = line.location.expand((padding_x, padding_y))
+
+                    line_images.append(image.crop(rect))
+                    line_texts.append(line.text)
 
         return RecognitionDataset(
             line_images=line_images,
             line_texts=line_texts,
             input_height=input_height
         )
+
+
+if __name__ == '__main__':
+    from manga_ocr.utils import get_path_project_dir
+
+    dataset_annotated = RecognitionDataset.load_annotated_dataset(get_path_project_dir('example/manga_annotated'))
+    dataset_annotated.get_line_image(0).show()
+
+    dataset_generated = RecognitionDataset.load_generated_dataset(get_path_project_dir('example/manga_generated'))
+    dataset_generated.get_line_image(0).show()
+    dataset_generated.get_line_image(1).show()
+    dataset_generated.get_line_image(3).show()

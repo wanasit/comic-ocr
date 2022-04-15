@@ -20,23 +20,35 @@ class CRNN(TextRecognizeModule):
 
     """
 
-    def __init__(self, **kwargs):
+    def __init__(
+            self,
+            feature_extraction_num_features=128,
+            sequential_input_size=128,
+            sequential_hidden_size=128,
+            **kwargs,
+    ):
         super().__init__(**kwargs)
 
-        resnet = resnet18(pretrained=True)
-        resnet_modules = list(resnet.children())[:-3]
+        # Todo: Try resnet
+        # resnet = resnet18(pretrained=True)
+        # resnet_modules = list(resnet.children())[:-3]
+
         self.feature_extraction_model = nn.Sequential(
-            #nn.Sequential(*resnet_modules), # Todo: use resnet
+            # nn.Sequential(*resnet_modules),
             nn.Sequential(
-                nn.Conv2d(self.input_channel, 256, kernel_size=3, stride=1, padding=1),
-                nn.BatchNorm2d(256),
+                nn.Conv2d(self.input_channel, feature_extraction_num_features, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(feature_extraction_num_features),
                 nn.ReLU(inplace=True)
             )
         )
 
         self.sequential_model = nn.Sequential(
-            nn.Linear(256 * 24, 256),
-            BidirectionalRNNBlock(input_size=256, hidden_size=256, output_size=self.prediction_hidden_size)
+            nn.Linear(128 * 24, sequential_input_size),
+            BidirectionalRNNBlock(
+                input_size=sequential_input_size,
+                hidden_size=sequential_hidden_size,
+                num_layers=2,
+                output_size=self.prediction_hidden_size)
         )
 
 
@@ -59,6 +71,7 @@ class BidirectionalRNNBlock(nn.Module):
 
 if __name__ == '__main__':
     from manga_ocr.utils import load_image, get_path_example_dir
+
     recognizer = CRNN()
     image = load_image(get_path_example_dir('manga_annotated/normal_01.jpg'))
     input = image_to_single_input_tensor(recognizer.input_height, image)

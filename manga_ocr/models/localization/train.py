@@ -27,17 +27,19 @@ def train(
 ):
     optimizer = optimizer if optimizer else optim.Adam(model.parameters(), lr=0.001)
     training_dataloader = DataLoader(training_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+    valid_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=True, num_workers=0) \
+        if validation_dataset else None
+
+    logger.info(f'Training {epoch_count} epochs, on {len(training_dataset)} samples ' +
+                f'({len(validation_dataset)} validation samples)' if validation_dataset else '')
 
     training_losses = []
     validation_losses = []
-    logger.info(f'Training {epoch_count} epochs, on {len(training_dataset)} samples ' +
-                f'({len(validation_dataset)} validation samples)' if validation_dataset else '')
 
     for i_epoch in range(epoch_count):
         with tqdm(total=len(training_dataset), disable=tqdm_disable) as tepoch:
             tepoch.set_description(f"Epoch {i_epoch}")
 
-            training_loss = 0.0
             for i_batch, batch in enumerate(training_dataloader):
                 optimizer.zero_grad()
                 loss = model.compute_loss(batch)
@@ -45,34 +47,29 @@ def train(
 
                 optimizer.step()
 
-                batch_loss = loss.item()
+                current_batch_loss = loss.item()
                 current_batch_size = batch['image'].size(0)
 
-                tepoch.set_postfix(training_batch_loss=batch_loss)
+                tepoch.set_postfix(training_batch_loss=current_batch_loss)
                 tepoch.update(current_batch_size)
-                training_loss += batch_loss * current_batch_size
+                training_losses.append(current_batch_loss)
 
-            training_loss = training_loss / len(training_dataset)
-            training_losses.append(training_loss)
-
-            if validation_dataset:
-                validation_loss = 0.0
-                valid_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+            if valid_dataloader:
                 for i_batch, batch in enumerate(valid_dataloader):
                     current_batch_size = batch['image'].size(0)
                     logger.debug(f'> Validating with {current_batch_size} samples')
                     with torch.no_grad():
-                        loss = model.compute_loss(batch)
-                        validation_loss += loss.item() * current_batch_size
-                validation_losses.append(validation_loss / len(validation_dataset))
-            else:
-                validation_loss = None
+                        current_batch_loss = model.compute_loss(batch)
+                        validation_losses.append(current_batch_loss)
+
+            training_loss = sum(training_losses) / len(training_losses)
+            validation_loss = sum(validation_losses) / len(validation_losses)
 
             tepoch.set_postfix(training_loss=training_loss, validation_loss=validation_loss)
             logger.info(f'> Finished training with training_loss={training_loss}, validation_loss={validation_loss}')
 
             if epoch_callback:
-                epoch_callback()
+                epoch_callback(i_epoch, training_losses, validation_losses)
 
     return (training_losses, validation_losses) if validation_dataset else (training_losses, None)
 

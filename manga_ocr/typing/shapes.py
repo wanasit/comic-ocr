@@ -111,8 +111,10 @@ class Rectangle(tuple):
     def br(self) -> Point:
         return Point((self[2], self[3]))
 
-    def expand(self, unit: int) -> Rectangle:
-        return Rectangle((self[0] - unit, self[1] - unit, self[2] + unit, self[3] + unit))
+    def expand(self, unit: Union[int, Tuple]) -> Rectangle:
+        unit_x = unit if isinstance(unit, int) else unit[0]
+        unit_y = unit if isinstance(unit, int) else unit[1]
+        return Rectangle((self[0] - unit_x, self[1] - unit_y, self[2] + unit_x, self[3] + unit_y))
 
     def is_overlap(self, rect: RectangleLike) -> bool:
         overlap_x = self.left < rect[0] < self.right or \

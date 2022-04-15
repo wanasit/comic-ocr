@@ -1,0 +1,5 @@
+torch
+torchvision
+numpy>=1.21
+Pillow>=9.1
+tqdm>=4
