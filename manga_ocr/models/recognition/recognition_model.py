@@ -53,7 +53,7 @@ def compute_ctc_loss(
     return loss_func(ctc_input, expected_output, ctc_input_length, expected_output_length)
 
 
-class TextRecognizeModule(nn.Module):
+class TextRecognizeModel(nn.Module):
     r"""
     An abstract for Text-Recognition Module following the framework mentioned in deep-text-recognition-benchmark
     https://github.com/clovaai/deep-text-recognition-benchmark

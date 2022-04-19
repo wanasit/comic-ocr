@@ -62,8 +62,8 @@ def train(
                         current_batch_loss = model.compute_loss(batch)
                         validation_losses.append(current_batch_loss)
 
-            training_loss = sum(training_losses) / len(training_losses)
-            validation_loss = sum(validation_losses) / len(validation_losses)
+            training_loss = sum(training_losses) / (len(training_losses) + 0.0001)
+            validation_loss = sum(validation_losses) / (len(validation_losses) + 0.0001)
 
             tepoch.set_postfix(training_loss=training_loss, validation_loss=validation_loss)
             logger.info(f'> Finished training with training_loss={training_loss}, validation_loss={validation_loss}')

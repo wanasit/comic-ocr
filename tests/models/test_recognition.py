@@ -4,9 +4,9 @@ from torch.utils.data import DataLoader
 from manga_ocr.models.recognition import SUPPORT_DICT_SIZE, encode
 from manga_ocr.models.recognition.crnn.crnn import CRNN
 from manga_ocr.models.recognition.recognition_dataset import RecognitionDataset
-from manga_ocr.models.recognition.recognition_module import image_to_single_input_tensor, compute_ctc_loss, DEFAULT_INPUT_HEIGHT
+from manga_ocr.models.recognition.recognition_model import image_to_single_input_tensor, compute_ctc_loss, DEFAULT_INPUT_HEIGHT
 
-from manga_ocr.utils import get_path_example_dir, load_image
+from manga_ocr.utils.files import get_path_example_dir, load_image
 
 
 def test_image_to_single_input_tensor_scale_down():

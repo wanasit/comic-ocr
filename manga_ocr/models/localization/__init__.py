@@ -22,3 +22,5 @@ def divine_rect_into_overlapping_tiles(rect: Union[Rectangle, Size], tile_size: 
             y = offset_y + i * (tile_size.height - overlap_size_y)
             x = offset_x + j * (tile_size.width - overlap_size_x)
             yield Rectangle.of_size(tile_size, at=(x, y))
+
+

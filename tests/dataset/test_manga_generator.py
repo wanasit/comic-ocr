@@ -1,7 +1,7 @@
 from PIL.Image import Image
 
 import manga_ocr.dataset.generated_manga as generated_manga
-from manga_ocr.utils import get_path_example_dir
+from manga_ocr.utils.files import get_path_example_dir
 
 
 def test_manga_generator():

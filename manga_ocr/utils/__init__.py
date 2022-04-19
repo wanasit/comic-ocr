@@ -1,73 +1,35 @@
-import glob
-import os
-import json
-from pathlib import Path
-from typing import List, Tuple, Dict, Optional, Union
+from typing import List, Union
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
-from manga_ocr.utils.nb_annotation import find_annotation_data_for_image
+from manga_ocr.typing import Rectangle, Paragraph, Line
+from manga_ocr.utils.files import get_path_project_dir
 
-current_module_dir = os.path.dirname(__file__)
-project_root_dir = os.path.join(current_module_dir, '../../')
+def image_with_annotations(
+        image: Image.Image,
+        annotations: List[Union[Rectangle, Paragraph, Line]],
+        annotation_fill: str = '#44ff2288',
+        annotation_text_fill: str = '#00bb00ff',
+        annotation_text_font: ImageFont.ImageFont = ImageFont.load_default(),
+):
+    image = image.copy()
+    draw = ImageDraw.Draw(image, 'RGBA')
+    for annotation in annotations:
+        location = annotation.location if hasattr(annotation, 'location') else annotation
+        text = annotation.text if hasattr(annotation, 'text') else ''
 
-PathLike = Union[
-    Path,
-    str
-]
+        draw.rectangle(location, fill=annotation_fill)
+        draw.text(location.br, text, annotation_text_fill, font=annotation_text_font)
 
-
-def get_path_project_dir(child='') -> str:
-    path = os.path.join(project_root_dir, child)
-    return path
-
-
-def get_path_example_dir(child='') -> str:
-    path = get_path_project_dir('example')
-    path = os.path.join(path, child)
-    return path
+    return image
 
 
-def load_images_with_annotation(
-        glob_file_pattern: PathLike,
-        alt_annotation_directory: Optional[PathLike] = None
-) -> Tuple[List[Image.Image], List[Optional[Dict]]]:
-    files = glob.glob(str(glob_file_pattern))
-    images = []
-    annotations = []
-    for file in sorted(files):
-        images.append(load_image(file))
+if __name__ == '__main__':
+    from files import load_image, find_annotation_data_for_image, get_path_project_dir
+    from nb_annotation import lines_from_nb_annotation_data
+    image = load_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))
 
-        annotation_file = find_annotation_data_for_image(file, alt_annotation_directory)
-        annotations.append(annotation_file)
+    annotation_data = find_annotation_data_for_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))
+    lines = lines_from_nb_annotation_data(annotation_data)
 
-    return images, annotations
-
-
-def load_images(glob_file_pattern: PathLike) -> List[Image.Image]:
-    files = glob.glob(str(glob_file_pattern))
-    images = []
-    for file in sorted(files):
-        images.append(load_image(file))
-
-    return images
-
-
-def load_image(file: PathLike) -> Image.Image:
-    with Image.open(file) as img:
-        return img.copy().convert('RGB')
-
-
-def load_texts(text_file: PathLike):
-    with open(text_file) as f:
-        return [line.strip() for line in f.readlines()]
-
-
-def load_json_dict(json_file: PathLike) -> Dict:
-    with open(json_file) as f:
-        return json.load(f)
-
-
-def write_json_dict(json_file: PathLike, data: Dict):
-    with open(json_file, 'w') as f:
-        return json.dump(data, f)
+    image_with_annotations(image, annotations=lines).show()

@@ -9,7 +9,7 @@ import manga_ocr.dataset.annotated_manga as annotated_manga
 import manga_ocr.dataset.generated_manga as generated_manga
 
 from manga_ocr.models.recognition import encode
-from manga_ocr.models.recognition.recognition_module import image_to_single_input_tensor, DEFAULT_INPUT_HEIGHT
+from manga_ocr.models.recognition.recognition_model import image_to_single_input_tensor, DEFAULT_INPUT_HEIGHT
 
 
 class RecognitionDataset(Dataset):

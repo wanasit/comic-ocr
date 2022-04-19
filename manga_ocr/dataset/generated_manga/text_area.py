@@ -33,7 +33,7 @@ class TextArea:
         width, height = self.font.getsize_multiline(self.wrapped_text, spacing=self.text_line_space)
         return Size.of(width, height + descent)
 
-    def get_lines(self, padding_ascent: int = 1, padding_decent: int = 1) -> List[Line]:
+    def get_lines(self, padding_ascent: int = 3, padding_decent: int = 3) -> List[Line]:
         lines = self.wrapped_text.split("\n")
         rect = self.get_text_rect()
 

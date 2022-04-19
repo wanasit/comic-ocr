@@ -7,14 +7,14 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from manga_ocr.models.recognition.recognition_dataset import RecognitionDataset
-from manga_ocr.models.recognition.recognition_module import TextRecognizeModule
+from manga_ocr.models.recognition.recognition_model import TextRecognizeModel
 from manga_ocr.utils import get_path_project_dir
 
 logger = logging.getLogger(__name__)
 
 
 def train(
-        model: TextRecognizeModule,
+        model: TextRecognizeModel,
         training_dataset: RecognitionDataset,
         validation_dataset: Optional[RecognitionDataset] = None,
         validation_every_n: Optional[int] = 200,

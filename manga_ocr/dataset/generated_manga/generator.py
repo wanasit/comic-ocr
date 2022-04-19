@@ -10,7 +10,7 @@ from manga_ocr.dataset.generated_manga.text_area import TextArea
 from manga_ocr.dataset.generated_manga.text_bubble import TextBubble
 from manga_ocr.dataset.generated_manga.text_rect import TextRect
 from manga_ocr.typing import Rectangle, Point, Drawable, Size
-from manga_ocr.utils import load_images, load_texts, get_path_example_dir
+from manga_ocr.utils.files import get_path_example_dir, load_images, load_texts
 
 
 @dataclass

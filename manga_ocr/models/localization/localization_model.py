@@ -1,6 +1,7 @@
 import os
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union, List
 
+import cv2
 import numpy as np
 import torch
 from PIL import Image
@@ -8,23 +9,18 @@ from torch import nn, Tensor
 from torchvision import transforms
 
 from manga_ocr.models.transforms import AddGaussianNoise
-from manga_ocr.typing import Size
+from manga_ocr.typing import Size, Rectangle
 
 TRANSFORM_TO_TENSOR = transforms.PILToTensor()
 TRANSFORM_TO_GRAY_SCALE = transforms.Grayscale()
 TRANSFORM_ADD_NOISE = AddGaussianNoise()
 
 
-def image_to_input_tensor(image):
-    input = TRANSFORM_TO_TENSOR(image).float() / 255
-    return input
+def _debug_show_output(debugging, output, text=''):
+    if debugging:
+        cv2.imshow(text, output)
+        cv2.waitKey(0)
 
-
-def image_mask_to_output_tensor(image, threshold: float = 0.5):
-    output = image_to_input_tensor(image)
-    output = TRANSFORM_TO_GRAY_SCALE(output)
-    output = (output > threshold).float()
-    return output
 
 def output_tensor_to_image_mask(tensor):
     return Image.fromarray(np.uint8(tensor.numpy()[0] * 255), 'L').convert('RGB')
@@ -56,6 +52,14 @@ class LocalizationModel(nn.Module):
 
         return loss
 
+    def locate_lines(self, image) -> List[Rectangle]:
+        with torch.no_grad():
+            input_tensor = image_to_input_tensor(image).unsqueeze(0)
+            _, output = self(input_tensor)
+            output = torch.sigmoid(output[0])
+
+        return locate_lines_in_image_mask(output)
+
     def create_image_mark_lines(self, image) -> Image.Image:
         with torch.no_grad():
             input_tensor = image_to_input_tensor(image).unsqueeze(0)
@@ -64,10 +68,68 @@ class LocalizationModel(nn.Module):
         return output_tensor_to_image_mask(output)
 
 
+def image_to_input_tensor(image):
+    input = TRANSFORM_TO_TENSOR(image).float() / 255
+    return input
+
+
+def image_mask_to_output_tensor(image, threshold_min: float = 0.5, threshold_max: float = 1.0):
+    output = image_to_input_tensor(image)
+    output = TRANSFORM_TO_GRAY_SCALE(output)
+    output = ((threshold_max >= output) & (output > threshold_min)).float()
+    return output
+
+
+def locate_lines_in_image_mask(
+        output_tensor: Union[np.ndarray, Tensor],
+        output_threshold: float = 0.8,
+        line_output_density_threshold: float = 0.70,
+        line_output_min_size: Size = Size.of(10, 10),
+        debugging=True
+) -> List[Rectangle]:
+    """Locate the line locations in the output tensor or array
+
+    Args:
+        output_tensor (np.ndarray, torch.Tensor): the prediction output tensor or array with shape and value similar to
+            the tensor returned by `image_mask_to_output_tensor()`
+        output_threshold (float)
+        line_output_density_threshold (float)
+        line_output_min_size (Size, Tuple[float, float])
+    Returns:
+        List[Rectangle]: the line locations
+    """
+    if isinstance(output_tensor, Tensor):
+        output_tensor = output_tensor.numpy()
+
+    if len(output_tensor.shape) == 3:
+        output_tensor = output_tensor.mean(axis=0)
+
+    _, thresh = cv2.threshold(output_tensor, output_threshold, 1, cv2.THRESH_BINARY)
+    output_rects = []
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(thresh.astype(np.uint8), connectivity=8)
+    for i in range(1, num_labels):
+        x = stats[i, cv2.CC_STAT_LEFT]
+        y = stats[i, cv2.CC_STAT_TOP]
+        w = stats[i, cv2.CC_STAT_WIDTH]
+        h = stats[i, cv2.CC_STAT_HEIGHT]
+
+        if w <= line_output_min_size[0] or h <= line_output_min_size[1]:
+            continue
+
+        density = thresh[y:y+h,x:x+w].sum() / w / h
+        if density < line_output_density_threshold:
+            continue
+
+        rect = Rectangle.of_xywh(x, y, w, h)
+        output_rects.append(rect)
+
+    return output_rects
+
+
 if __name__ == '__main__':
     from manga_ocr.models.localization.conv_unet.conv_unet import ConvUnet
-    from manga_ocr.utils import get_path_project_dir
-    from manga_ocr.utils import load_image
+    from manga_ocr.utils import image_with_annotations
+    from manga_ocr.utils.files import load_image, get_path_project_dir
 
     path_output_model = get_path_project_dir('data/output/models/localization.bin')
 
@@ -79,9 +141,7 @@ if __name__ == '__main__':
         model = ConvUnet()
 
     example = load_image(get_path_project_dir('example/manga_generated/image/0000.jpg'))
-    example_mask_lines = load_image(get_path_project_dir('example/manga_generated/image_mask/0000.jpg'))
-    located_mask_lines = model.create_image_mark_lines(example)
+    located_lines = model.locate_lines(example)
 
-    example.show()
-    example_mask_lines.show()
-    located_mask_lines.show()
+    image_with_annotations(example, located_lines).show()
+    model.create_image_mark_lines(example).show()

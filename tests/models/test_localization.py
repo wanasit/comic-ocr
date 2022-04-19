@@ -7,37 +7,7 @@ from manga_ocr.models.localization.localization_dataset import LocalizationDatas
 from manga_ocr.models.localization.localization_model import LocalizationModel, image_to_input_tensor
 from manga_ocr.models.localization.train import train
 from manga_ocr.typing import Size, Rectangle
-from manga_ocr.utils import get_path_example_dir
-
-
-def test_loading_generated_manga_dataset(tmpdir):
-    dataset_dir = tmpdir.join('dataset')
-    generated_manga.create_dataset(dataset_dir, output_count=5, output_size=Size.of(500, 500))
-
-    dataset = LocalizationDataset.load_generated_manga_dataset(dataset_dir, image_size=Size.of(500, 500))
-    assert len(dataset) > 0
-
-    train_dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=1)
-    batch = next(iter(train_dataloader))
-
-    assert batch['image'].shape == (2, 3, 500, 500)
-    assert batch['mask_char'].shape == (2, 1, 500, 500)
-    assert batch['mask_line'].shape == (2, 1, 500, 500)
-
-
-def test_loading_generated_manga_dataset_with_resize(tmpdir):
-    dataset_dir = tmpdir.join('dataset')
-    generated_manga.create_dataset(dataset_dir, output_count=5, output_size=Size.of(500, 500))
-
-    dataset = LocalizationDataset.load_generated_manga_dataset(dataset_dir, image_size=Size.of(200, 200))
-    assert len(dataset) > 0
-
-    train_dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=1)
-    batch = next(iter(train_dataloader))
-
-    assert batch['image'].shape == (2, 3, 200, 200)
-    assert batch['mask_char'].shape == (2, 1, 200, 200)
-    assert batch['mask_line'].shape == (2, 1, 200, 200)
+from manga_ocr.utils.files import get_path_example_dir
 
 
 def test_divine_rect_into_overlapping_tiles():
@@ -79,7 +49,7 @@ def test_divine_rect_into_overlapping_tiles_real_cases():
 
 def test_conv_unet_forward():
     model = ConvUnet()
-    assert model.image_size == (750, 750)
+    assert model.image_size == (500, 500)
 
     example_generated_dataset_dir = get_path_example_dir('manga_generated')
     dataset = LocalizationDataset.load_generated_manga_dataset(example_generated_dataset_dir,
@@ -87,14 +57,14 @@ def test_conv_unet_forward():
 
     input_image = image_to_input_tensor(dataset.images[0]).unsqueeze(0)
     output_char, output_line = model(input_image)
-    assert output_char.shape == (1, 1, 750, 750)
-    assert output_line.shape == (1, 1, 750, 750)
+    assert output_char.shape == (1, 1, 500, 500)
+    assert output_line.shape == (1, 1, 500, 500)
 
 
 def test_conv_unet_loss():
 
     model = ConvUnet()
-    assert model.image_size == (750, 750)
+    assert model.image_size == (500, 500)
 
     example_generated_dataset_dir = get_path_example_dir('manga_generated')
     dataset = LocalizationDataset.load_generated_manga_dataset(
@@ -108,7 +78,7 @@ def test_conv_unet_loss():
 
 def test_conv_unet_training():
     model = ConvUnet()
-    assert model.image_size == (750, 750)
+    assert model.image_size == (500, 500)
 
     example_generated_dataset_dir = get_path_example_dir('manga_generated')
     dataset = LocalizationDataset.load_generated_manga_dataset(example_generated_dataset_dir,

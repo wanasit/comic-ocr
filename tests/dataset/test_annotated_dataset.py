@@ -1,5 +1,5 @@
 from manga_ocr.dataset.annotated_manga import load_line_annotated_dataset
-from manga_ocr.utils import get_path_example_dir
+from manga_ocr.utils.files import get_path_example_dir
 
 
 def test_load_example_dataset():

@@ -6,7 +6,8 @@ from PIL import Image
 from manga_ocr.dataset.generated_manga.generator import MangaGenerator
 from manga_ocr.dataset.generated_manga.text_area import TextArea
 from manga_ocr.typing import Color, Paragraph, Size, Line
-from manga_ocr.utils import write_json_dict, load_images, load_images_with_annotation, get_path_project_dir
+from manga_ocr.utils import get_path_project_dir
+from manga_ocr.utils.files import load_images_with_annotation, load_images, write_json_dict
 from manga_ocr.utils.nb_annotation import lines_to_nb_annotation_data, lines_from_nb_annotation_data
 
 DEFAULT_CHAR_ALPHA = 1.0

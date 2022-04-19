@@ -6,14 +6,14 @@ from torch import nn
 import torch.nn.functional as F
 from torchvision.models import resnet18
 
-from manga_ocr.models.recognition.recognition_module import TextRecognizeModule, image_to_single_input_tensor
+from manga_ocr.models.recognition.recognition_model import TextRecognizeModel, image_to_single_input_tensor
 
 # TODO: Remove this
 # Ref: https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
-class CRNN(TextRecognizeModule):
+class CRNN(TextRecognizeModel):
     """
     A Text-Recognition Module based-on CRNN (Convolutional Recurrent Neural Network) framework:
     https://arxiv.org/abs/1507.05717
@@ -70,7 +70,7 @@ class BidirectionalRNNBlock(nn.Module):
 
 
 if __name__ == '__main__':
-    from manga_ocr.utils import load_image, get_path_example_dir
+    from manga_ocr.utils.files import get_path_example_dir, load_image
 
     recognizer = CRNN()
     image = load_image(get_path_example_dir('manga_annotated/normal_01.jpg'))
