@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Iterable
 
 
 class Point(tuple):
@@ -66,6 +66,18 @@ class Rectangle(tuple):
     @staticmethod
     def of_tl_br(tl: Tuple[int, int], br: Tuple[int, int] = (0, 0)) -> Rectangle:
         return Rectangle([tl[0], tl[1], br[0], br[1]])
+
+    @staticmethod
+    def union_bounding_rect(rectangles: Iterable[Rectangle]):
+        top, left, bottom, right = float('inf'), float('inf'), -float('inf'), -float('inf')
+        for rect in rectangles:
+            top, left = min(top, rect.top), min(left, rect.left)
+            bottom, right = max(bottom, rect.bottom), max(right, rect.right)
+
+        return Rectangle.of_tl_br(
+            tl=(left, top),
+            br=(right, bottom)
+        )
 
     @property
     def box(self) -> Tuple[int, int, int, int]:

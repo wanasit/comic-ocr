@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from PIL.Image import Image
 
@@ -12,7 +12,13 @@ _localization_model = None
 
 def localize_lines(image: Image) -> List[Rectangle]:
     model = get_localization_model()
+    model.create_image_mark_lines(image).show()
     return model.locate_lines(image)
+
+
+def localize_paragraphs(image: Image) -> List[Tuple[Rectangle, List[Rectangle]]]:
+    model = get_localization_model()
+    return model.locate_paragraphs(image)
 
 
 def get_localization_model() -> LocalizationModel:

@@ -52,6 +52,10 @@ class LocalizationModel(nn.Module):
 
         return loss
 
+    def locate_paragraphs(self, image) -> List[Tuple[Rectangle, List[Rectangle]]]:
+        lines = self.locate_lines(image)
+        return group_lines_into_paragraphs(lines)
+
     def locate_lines(self, image) -> List[Rectangle]:
         with torch.no_grad():
             input_tensor = image_to_input_tensor(image).unsqueeze(0)
@@ -82,8 +86,8 @@ def image_mask_to_output_tensor(image, threshold_min: float = 0.5, threshold_max
 
 def locate_lines_in_image_mask(
         output_tensor: Union[np.ndarray, Tensor],
-        output_threshold: float = 0.8,
-        line_output_density_threshold: float = 0.70,
+        output_threshold: float = 0.95,
+        line_output_density_threshold: float = 0.80,
         line_output_min_size: Size = Size.of(10, 10),
         debugging=True
 ) -> List[Rectangle]:
@@ -105,6 +109,8 @@ def locate_lines_in_image_mask(
         output_tensor = output_tensor.mean(axis=0)
 
     _, thresh = cv2.threshold(output_tensor, output_threshold, 1, cv2.THRESH_BINARY)
+    # _debug_show_output(True, thresh)
+
     output_rects = []
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(thresh.astype(np.uint8), connectivity=8)
     for i in range(1, num_labels):
@@ -116,14 +122,46 @@ def locate_lines_in_image_mask(
         if w <= line_output_min_size[0] or h <= line_output_min_size[1]:
             continue
 
-        density = thresh[y:y+h,x:x+w].sum() / w / h
+        rect = Rectangle.of_xywh(x, y, w, h)
+        inner_rect = rect.expand((0, -3))
+
+        density = thresh[inner_rect.top:inner_rect.bottom, inner_rect.left:inner_rect.right].sum() \
+                  / inner_rect.height / inner_rect.width
         if density < line_output_density_threshold:
             continue
-
-        rect = Rectangle.of_xywh(x, y, w, h)
         output_rects.append(rect)
 
     return output_rects
+
+
+def group_lines_into_paragraphs(lines: List[Rectangle]) -> List[Tuple[Rectangle, List[Rectangle]]]:
+    paragraphs: List[Tuple[Rectangle, List[Rectangle]]] = []
+    for line in lines:
+        for i in range(len(paragraphs)):
+            paragraph_rect, paragraph_lines = paragraphs[i]
+
+            if _paragraph_align_left(paragraph_rect, line) or _paragraph_align_center(paragraph_rect, line):
+                new_paragraph_rect = Rectangle.union_bounding_rect((paragraph_rect, line))
+                paragraphs[i] = (new_paragraph_rect, paragraph_lines + [line])
+                break
+        else:
+            paragraphs.append((line, [line]))
+
+    return paragraphs
+
+
+def _paragraph_align_left(paragraph_rect: Rectangle, line_rect: Rectangle, x_margin=5, y_min_margin=10):
+    y_margin = max(line_rect.height / 5, y_min_margin)
+
+    return abs(paragraph_rect.left - line_rect.left) < x_margin and \
+           abs(paragraph_rect.bottom - line_rect.top) < y_margin
+
+
+def _paragraph_align_center(paragraph_rect: Rectangle, line_rect: Rectangle, x_margin=10, y_min_margin=10):
+    y_margin = max(line_rect.height / 5, y_min_margin)
+
+    return abs(paragraph_rect.center[0] - line_rect.center[0]) < x_margin and \
+           abs(paragraph_rect.bottom - line_rect.top) < y_margin
 
 
 if __name__ == '__main__':
@@ -140,8 +178,14 @@ if __name__ == '__main__':
         print('Creating a new model...')
         model = ConvUnet()
 
-    example = load_image(get_path_project_dir('example/manga_generated/image/0000.jpg'))
-    located_lines = model.locate_lines(example)
+    #example = load_image(get_path_project_dir('example/manga_generated/image/0001.jpg'))
+    example = load_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))
+    paragraphs = model.locate_paragraphs(example)
 
-    image_with_annotations(example, located_lines).show()
+    paragraph_locations = [rect for rect, _ in paragraphs]
+    image_with_annotations(example, paragraph_locations).show()
+
+    lines = [l for _, lines in paragraphs for l in lines]
+    image_with_annotations(example, lines).show()
+
     model.create_image_mark_lines(example).show()
