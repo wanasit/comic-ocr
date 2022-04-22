@@ -14,28 +14,31 @@ def test_manga_generator():
 
 def test_load_example_dataset():
     example_dataset_dir = get_path_example_dir('manga_generated')
-    dataset = generated_manga.load_dataset(example_dataset_dir)
+    images, image_texts, image_masks = generated_manga.load_dataset(example_dataset_dir)
+    assert len(images) == 3
+    assert len(image_texts) == 3
+    assert len(image_masks) == 3
 
-    assert len(dataset) == 3
+    assert isinstance(images[0], Image)
+    assert isinstance(image_masks[0], Image)
 
-    row = dataset[0]
-    assert isinstance(row[0], Image)
-    assert isinstance(row[1], Image)
-    assert len(row[2]) > 0
+    assert len(image_texts[0]) > 0
 
 
 def test_generate_dataset(tmpdir):
     dataset_dir = tmpdir / 'test_generate_dataset'
 
-    generated_manga.create_dataset(dataset_dir, output_count=4)
+    generated_manga.create_dataset(dataset_dir, output_count=2)
 
-    dataset = generated_manga.load_dataset(dataset_dir)
-    assert len(dataset) == 4
+    images, image_texts, image_masks = generated_manga.load_dataset(dataset_dir)
+    assert len(images) == 2
+    assert len(image_texts) == 2
+    assert len(image_masks) == 2
 
-    row = dataset[0]
-    assert isinstance(row[0], Image)
-    assert isinstance(row[1], Image)
-    assert len(row[2]) > 0
+    assert isinstance(images[0], Image)
+    assert isinstance(image_masks[0], Image)
+
+    assert len(image_texts[0]) > 0
 
 
 def test_generate_on_the_same_location(tmpdir):

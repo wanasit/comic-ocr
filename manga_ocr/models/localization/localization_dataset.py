@@ -33,25 +33,27 @@ class LocalizationDataset(Dataset):
     @staticmethod
     def load_generated_manga_dataset(directory, image_size: Size = Size.of(500, 500)):
 
-        dataset = load_dataset(directory)
-        assert len(dataset) > 0
+        images, _, image_masks = load_dataset(directory)
+        assert len(images) > 0
 
-        images, image_masks = LocalizationDataset._split_or_pad_images_into_size(dataset, image_size)
+        images, image_masks = LocalizationDataset._split_or_pad_images_into_size(images, image_masks, image_size)
         return LocalizationDataset(images=images, image_masks=image_masks)
 
     @staticmethod
-    def _split_or_pad_images_into_size(dataset_images: Iterable[Tuple[Image, Image, Any]], image_size: Size = Size.of(500, 500)):
+    def _split_or_pad_images_into_size(
+            original_images,
+            original_image_masks,
+            output_image_size: Size = Size.of(500, 500)):
         output_images = []
         output_raw_image_masks = []
 
-        tile_overlap_x = image_size.width // 4
-        tile_overlap_y = image_size.width // 4
-        for row in dataset_images:
-            image = row[0]
-            image_mask = row[1]
+        tile_overlap_x = output_image_size.width // 4
+        tile_overlap_y = output_image_size.width // 4
+
+        for image, image_mask in zip(original_images, original_image_masks):
 
             for tile in divine_rect_into_overlapping_tiles(
-                    Size(image.size), tile_size=image_size, min_overlap_x=tile_overlap_x, min_overlap_y=tile_overlap_y):
+                    Size(image.size), tile_size=output_image_size, min_overlap_x=tile_overlap_x, min_overlap_y=tile_overlap_y):
                 output_images.append(image.crop(tile))
                 output_raw_image_masks.append(image_mask.crop(tile))
 

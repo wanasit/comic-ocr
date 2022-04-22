@@ -59,11 +59,11 @@ class RecognitionDataset(Dataset):
             directory: str,
             input_height: int = DEFAULT_INPUT_HEIGHT,
     ):
-        line_annotated_dataset = annotated_manga.load_line_annotated_dataset(directory)
+        images, image_texts = annotated_manga.load_line_annotated_dataset(directory)
 
         line_images = []
         line_texts = []
-        for image, lines in line_annotated_dataset:
+        for image, lines in zip(images, image_texts):
 
             for line in lines:
                 line_images.append(image.crop(line.location))
@@ -90,12 +90,12 @@ class RecognitionDataset(Dataset):
             if isinstance(random_padding_y, int) else random_padding_y
         random = Random(random_seed)
 
-        generated_dataset = generated_manga.load_dataset(directory)
+        images, image_texts, _ = generated_manga.load_dataset(directory)
 
         line_images = []
         line_texts = []
 
-        for image, _, lines in generated_dataset:
+        for image, lines in zip(images, image_texts):
             for line in lines:
                 for padding_copy_i in range(random_padding_copy_count):
 

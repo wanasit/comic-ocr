@@ -1,3 +1,10 @@
+"""A module for loading and generating random manga dataset
+
+The generated image consist of randomly pasted drawings with randomly generated text bubbles on top.
+(see the `generator` file for more details)
+
+"""
+
 from pathlib import Path
 from typing import Optional, Tuple, List
 
@@ -5,8 +12,7 @@ from PIL import Image
 
 from manga_ocr.dataset.generated_manga.generator import MangaGenerator
 from manga_ocr.dataset.generated_manga.text_area import TextArea
-from manga_ocr.typing import Color, Paragraph, Size, Line
-from manga_ocr.utils import get_path_project_dir
+from manga_ocr.typing import Color, Size, Line
 from manga_ocr.utils.files import load_images_with_annotation, load_images, write_json_dict
 from manga_ocr.utils.nb_annotation import lines_to_nb_annotation_data, lines_from_nb_annotation_data
 
@@ -14,12 +20,23 @@ DEFAULT_CHAR_ALPHA = 1.0
 DEFAULT_LINE_ALPHA = 0.6
 
 
-def load_dataset(dataset_dir: str) -> List[Tuple[Image.Image, Image.Image, List[Line]]]:
-    path = Path(dataset_dir)
-    images, _, line_annotations = load_images_with_annotation(path / 'image/*.jpg', path / 'line_annotation')
-    image_masks, _ = load_images(path / 'image_mask/*.jpg')
+def load_dataset(dataset_dir: str) -> Tuple[List[Image.Image], List[List[Line]], List[Image.Image]]:
+    """Load the dataset created by `create_dataset()`
 
-    return [(images[i], image_masks[i], lines_from_nb_annotation_data(line_annotations[i])) for i in range(len(images))]
+    Args:
+        dataset_dir (Str, Path): path to the dataset directory
+
+    Returns:
+        images (List[Image])
+        image_texts (List[List[Line]])
+        image_masks (List[Image])
+    """
+    path = Path(dataset_dir)
+    images, _, annotations = load_images_with_annotation(path / 'image/*.jpg', path / 'line_annotation')
+    image_masks, _ = load_images(path / 'image_mask/*.jpg')
+    image_texts = [lines_from_nb_annotation_data(a) for a in annotations]
+
+    return images, image_texts, image_masks
 
 
 def create_dataset(
@@ -58,16 +75,3 @@ def _create_image_mask(
         text_area.draw_text(image, text_fill=color_char)
     return image.convert('RGB')
 
-
-if __name__ == "__main__":
-    import shutil
-
-    dataset_dir = get_path_project_dir('data/output/generated_manage_test')
-    shutil.rmtree(dataset_dir)
-
-    create_dataset(dataset_dir, output_count=3)
-    dataset = load_dataset(dataset_dir)
-
-    print(dataset[0])
-    print(dataset[1])
-    print(dataset[2])

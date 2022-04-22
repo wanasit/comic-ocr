@@ -6,9 +6,10 @@ from manga_ocr.utils.files import get_path_example_dir
 def test_locate_lines_in_image_mask():
 
     example_generated_dataset_dir = get_path_example_dir('manga_generated')
-    dataset = generated_manga.load_dataset(example_generated_dataset_dir)
+    _, image_texts, image_masks = generated_manga.load_dataset(example_generated_dataset_dir)
 
-    image, image_mask, lines = dataset[0]
+    image_mask = image_masks[0]
+    lines = image_texts[0]
 
     output_tensor = image_mask_to_output_tensor(image_mask)
     # output_tensor_to_image_mask(output_tensor).show()
