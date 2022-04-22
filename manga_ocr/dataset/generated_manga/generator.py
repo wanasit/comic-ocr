@@ -96,7 +96,7 @@ def load_example_fonts() -> List[ImageFont.ImageFont]:
 
 
 def load_example_drawing() -> List[Image.Image]:
-    return load_images(get_path_example_dir() + '/drawings/*.jpg')
+    return load_images(get_path_example_dir() + '/drawings/*.jpg')[0]
 
 
 def load_example_texts() -> List[str]:

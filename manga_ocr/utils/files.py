@@ -11,6 +11,11 @@ from manga_ocr.utils.nb_annotation import find_annotation_data_for_image
 current_module_dir = os.path.dirname(__file__)
 project_root_dir = os.path.join(current_module_dir, '../../')
 
+PathLike = Union[
+    Path,
+    str
+]
+
 
 def get_path_project_dir(child='') -> str:
     path = os.path.join(project_root_dir, child)
@@ -23,35 +28,33 @@ def get_path_example_dir(child='') -> str:
     return path
 
 
-PathLike = Union[
-    Path,
-    str
-]
-
-
 def load_images_with_annotation(
         glob_file_pattern: PathLike,
         alt_annotation_directory: Optional[PathLike] = None
-) -> Tuple[List[Image.Image], List[Optional[Dict]]]:
+) -> Tuple[List[Image.Image], List[str], List[Optional[Dict]]]:
     files = glob.glob(str(glob_file_pattern))
     images = []
+    image_files = []
     annotations = []
     for file in sorted(files):
         images.append(load_image(file))
+        image_files.append(os.path.abspath(file))
 
         annotation_file = find_annotation_data_for_image(file, alt_annotation_directory)
         annotations.append(annotation_file)
 
-    return images, annotations
+    return images, image_files, annotations
 
 
-def load_images(glob_file_pattern: PathLike) -> List[Image.Image]:
+def load_images(glob_file_pattern: PathLike) -> Tuple[List[Image.Image], List[str]]:
     files = glob.glob(str(glob_file_pattern))
     images = []
+    image_files = []
     for file in sorted(files):
         images.append(load_image(file))
+        image_files.append(os.path.abspath(file))
 
-    return images
+    return images, image_files
 
 
 def load_image(file: PathLike) -> Image.Image:

@@ -12,7 +12,6 @@ _localization_model = None
 
 def localize_lines(image: Image) -> List[Rectangle]:
     model = get_localization_model()
-    model.create_image_mark_lines(image).show()
     return model.locate_lines(image)
 
 
@@ -28,3 +27,7 @@ def get_localization_model() -> LocalizationModel:
         _localization_model = torch.load(_localization_model_path)
 
     return _localization_model
+
+
+
+

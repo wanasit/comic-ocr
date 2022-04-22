@@ -1,8 +1,6 @@
 from torch.utils.data import DataLoader
 
 from manga_ocr.dataset import generated_manga
-from manga_ocr.models.localization import divine_rect_into_overlapping_tiles
-from manga_ocr.models.localization.conv_unet.conv_unet import ConvUnet
 from manga_ocr.models.localization.localization_dataset import LocalizationDataset
 from manga_ocr.typing import Size
 

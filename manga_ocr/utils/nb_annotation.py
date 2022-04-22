@@ -31,6 +31,14 @@ def find_annotation_data_for_image(img_path: str, alt_directory: Optional[str] =
     return None
 
 
+def write_annotation_data_for_image(img_path: str, annotation_data: Dict, alt_directory: Optional[str] = None):
+    annotation_file = os.path.splitext(img_path)[0] + '.json'
+    if alt_directory:
+        annotation_file = os.path.join(alt_directory, os.path.split(annotation_file)[-1])
+
+    _write_json_dict(annotation_file, annotation_data)
+
+
 def lines_to_nb_annotation_data(lines: List[Line]) -> Dict:
     annotations = []
     for line in lines:
@@ -45,7 +53,8 @@ def lines_from_nb_annotation_data(annotation_data: Dict) -> List[Line]:
     lines = []
     for a in annotation_data['annotations']:
         line = line_from_nb_annotation(a)
-        lines.append(line)
+        if line:
+            lines.append(line)
 
     return lines
 
@@ -56,18 +65,20 @@ def line_to_nb_annotation(line: Line) -> Dict:
     return annotation
 
 
-def line_from_nb_annotation(annotation) -> Line:
+def line_from_nb_annotation(annotation) -> Optional[Line]:
     rect = rect_from_annotation(annotation)
-    text = annotation['text']
-    return Line.of(text, rect)
+    if 'text' in annotation:
+        text = annotation['text']
+        return Line.of(text, rect)
+    return None
 
 
 def rect_to_nb_annotation(rect: Rectangle) -> Dict:
     return {
-        'x': rect.left,
-        'y': rect.top,
-        'width': rect.width,
-        'height': rect.height
+        'x': int(rect.left),
+        'y': int(rect.top),
+        'width': int(rect.width),
+        'height': int(rect.height)
     }
 
 
@@ -78,3 +89,8 @@ def rect_from_annotation(annotation) -> Rectangle:
 def _load_json_dict(json_file: str) -> Dict:
     with open(json_file) as f:
         return json.load(f)
+
+
+def _write_json_dict(json_file: str, json_dict: Dict):
+    with open(json_file, 'w') as f:
+        return json.dump(json_dict, f)

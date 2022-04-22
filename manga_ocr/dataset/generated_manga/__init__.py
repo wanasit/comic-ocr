@@ -16,8 +16,8 @@ DEFAULT_LINE_ALPHA = 0.6
 
 def load_dataset(dataset_dir: str) -> List[Tuple[Image.Image, Image.Image, List[Line]]]:
     path = Path(dataset_dir)
-    images, line_annotations = load_images_with_annotation(path / 'image/*.jpg', path / 'line_annotation')
-    image_masks = load_images(path / 'image_mask/*.jpg')
+    images, _, line_annotations = load_images_with_annotation(path / 'image/*.jpg', path / 'line_annotation')
+    image_masks, _ = load_images(path / 'image_mask/*.jpg')
 
     return [(images[i], image_masks[i], lines_from_nb_annotation_data(line_annotations[i])) for i in range(len(images))]
 

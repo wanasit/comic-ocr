@@ -10,7 +10,7 @@ def test_localize_paragraphs():
     paragraph_locations = [l for l, _ in paragraphs]
 
     #assert len(paragraph_locations) == 4
-    image_with_annotations(image, paragraph_locations).show()
+    #image_with_annotations(image, paragraph_locations).show()
 
 
 def test_locate_lines():
