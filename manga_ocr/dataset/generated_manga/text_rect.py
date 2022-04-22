@@ -13,8 +13,7 @@ class TextRect(TextArea):
 
     def draw_background(self, image: Drawable):
         draw = to_draw(image)
-        inner_rect = self.get_text_rect()
-        outer_rect = inner_rect.expand(self.rect_padding + self.rect_outline_width)
+        outer_rect = self.text_rect.expand(self.rect_padding + self.rect_outline_width)
         draw.rectangle(
             xy=outer_rect,
             fill=self.rect_fill_color,

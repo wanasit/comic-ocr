@@ -21,7 +21,10 @@ class Point(tuple):
 
     @property
     def y(self) -> int:
-        return self[0]
+        return self[1]
+
+    def move(self, diff_x: int, diff_y: int) -> Point:
+        return Point.of(self.x + diff_x, self.y + diff_y)
 
 
 class Size(tuple):

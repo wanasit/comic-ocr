@@ -16,8 +16,7 @@ class TextBubble(TextArea):
 
     def draw_background(self, image: Drawable):
         draw = to_draw(image)
-        inner_rect = self.get_text_rect()
-        outer_rect = inner_rect.expand(self.bubble_outline_width + self.bubble_padding)
+        outer_rect = self.text_rect.expand(self.bubble_outline_width + self.bubble_padding)
         draw.ellipse(
             _ellipse_bounding_box(outer_rect),
             fill=self.bubble_fill_color,

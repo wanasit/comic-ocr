@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import List, Optional
 
 from PIL import ImageFont
@@ -11,6 +12,11 @@ class TextArea:
     xy: Point = field()
     text: str = field()
 
+    padding_x: int = field(default=4, repr=False)
+    padding_y: int = field(default=2, repr=False)
+    padding_line_ascent: int = field(default=1, repr=False)
+    padding_line_decent: int = field(default=1, repr=False)
+
     font: ImageFont = field(default=ImageFont.load_default(), repr=False)
     text_fill: str = field(default='#000000', repr=False)
     text_line_space: int = field(default=4, repr=False)
@@ -18,42 +24,45 @@ class TextArea:
     max_width: Optional[float] = field(default=None, repr=False)
     max_height: Optional[float] = field(default=None, repr=False)
 
-    @property
-    def wrapped_text(self):
+    @cached_property
+    def wrapped_text_lines(self) -> List[str]:
         if self.max_width and self.max_width > 0:
-            return '\n'.join(_text_wrap(self.text, font=self.font, max_width=self.max_width))
-        return self.text
+            return _text_wrap(self.text, font=self.font, max_width=self.max_width)
+        return [self.text]
 
-    def get_text_rect(self) -> Rectangle:
-        size = self.get_text_size()
-        return Rectangle.of_size(size, at=self.xy)
+    @cached_property
+    def wrapped_text(self):
+        return '\n'.join(self.wrapped_text_lines)
 
-    def get_text_size(self) -> Size:
+    @property
+    def text_size(self):
         ascent, descent = self.font.getmetrics()
         width, height = self.font.getsize_multiline(self.wrapped_text, spacing=self.text_line_space)
-        return Size.of(width, height + descent)
+        return Size.of(width + self.padding_x, height + descent + self.padding_y)
 
-    def get_lines(self, padding_ascent: int = 3, padding_decent: int = 3) -> List[Line]:
-        lines = self.wrapped_text.split("\n")
-        rect = self.get_text_rect()
+    @property
+    def text_rect(self):
+        return Rectangle.of_size(self.text_size, at=self.xy)
 
-        font_height_ascent, font_height_descent = self.font.getmetrics()
-        _, x_y1, _, x_y2 = self.font.getbbox("x")
-        font_x_height = x_y2 - x_y1
-        text_height = font_x_height + padding_ascent + padding_decent
+    # noinspection PyUnresolvedReferences
+    @cached_property
+    def text_lines(self) -> List[Line]:
+        lines = self.wrapped_text_lines
+        rect = self.text_rect
+        ascent, descent = self.font.getmetrics()
+        _, x_y1, _, x_y2 = self.font.getbbox("Ay")
+        actual_text_height = x_y2 - x_y1
+        line_height = actual_text_height + self.padding_line_ascent + self.padding_line_decent
+        line_top = rect.top + (descent // 2) - self.padding_line_ascent + (self.padding_y // 2)
 
-        text_blob_height = rect.height - font_height_descent - self.text_line_space * (len(lines) - 1)
-        line_height = text_blob_height / len(lines) + self.text_line_space
-
-        line_top = rect.top + (font_height_ascent - text_height + padding_decent)
-
+        text_height_total = rect.height - descent - self.text_line_space * (len(lines) - 1)
+        line_space = text_height_total // len(lines) + self.text_line_space
         rects = []
         for i, line in enumerate(lines):
             rects.append(Line.of(text=line, at=Rectangle.of_xywh(
-                x=rect.left,
-                y=line_top + i * line_height,
-                w=self.font.getsize(line)[0],
-                h=text_height,
+                x=rect.left, y=line_top + i * line_space,
+                w=self.font.getsize(line)[0] + self.padding_x,
+                h=line_height,
             )))
         return rects
 
@@ -61,18 +70,26 @@ class TextArea:
         draw = to_draw(image)
         self.draw_background(draw)
         self.draw_text(draw)
-        return self.get_text_rect()
+        return self.text_rect
 
     def draw_text(self, image: Drawable, text_fill: Optional[Color] = None):
         draw = to_draw(image)
         text_fill = text_fill if text_fill else self.text_fill
-        draw.multiline_text(self.xy, text=self.wrapped_text, font=self.font, fill=text_fill,
+        draw.multiline_text(self.xy.move(self.padding_x // 2, self.padding_y // 2),
+                            text=self.wrapped_text,
+                            font=self.font,
+                            fill=text_fill,
                             spacing=self.text_line_space)
+
+    def draw_text_rect(self, image: Drawable, fill: Optional[Color] = None):
+        draw = to_draw(image)
+        fill = fill if fill else self.text_fill
+        draw.rectangle(self.text_rect, fill=fill)
 
     def draw_line_rects(self, image: Drawable, line_fill: Optional[Color] = None):
         draw = to_draw(image)
         line_fill = line_fill if line_fill else self.text_fill
-        for line_location in self.get_lines():
+        for line_location in self.text_lines():
             draw.rectangle(line_location.location, fill=line_fill)
 
     def draw_background(self, image: Drawable):

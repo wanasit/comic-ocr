@@ -18,7 +18,7 @@ from manga_ocr.utils.nb_annotation import lines_to_nb_annotation_data, lines_fro
 
 DEFAULT_CHAR_ALPHA = 1.0
 DEFAULT_LINE_ALPHA = 0.6
-
+DEFAULT_RECT_ALPHA = 0.2
 
 def load_dataset(dataset_dir: str) -> Tuple[List[Image.Image], List[List[Line]], List[Image.Image]]:
     """Load the dataset created by `create_dataset()`
@@ -55,7 +55,7 @@ def create_dataset(
     for i in range(output_count):
         image, text_areas = generator.generate(i, output_size=output_size)
         image_mask = _create_image_mask(image, text_areas)
-        lines = [line for t in text_areas for line in t.get_lines()]
+        lines = [line for t in text_areas for line in t.text_lines]
 
         image.save(path / 'image' / '{:04}.jpg'.format(i))
         image_mask.save(path / 'image_mask' / '{:04}.jpg'.format(i))
@@ -68,10 +68,22 @@ def _create_image_mask(
         color_background: Color = (0, 0, 0),
         color_char: Color = (int(255 * DEFAULT_CHAR_ALPHA),) * 3,
         color_line: Color = (int(255 * DEFAULT_LINE_ALPHA),) * 3,
+        color_rect: Color = (int(255 * DEFAULT_RECT_ALPHA),) * 3,
 ):
     image = Image.new('RGB', image.size, color_background)
     for text_area in text_areas:
+        text_area.draw_text_rect(image, fill=color_rect)
         text_area.draw_line_rects(image, line_fill=color_line)
         text_area.draw_text(image, text_fill=color_char)
     return image.convert('RGB')
 
+
+if __name__ == "__main__":
+    import shutil
+    from manga_ocr.utils.files import get_path_project_dir
+
+    dataset_dir = get_path_project_dir('data/output/generated_manage_test')
+    shutil.rmtree(dataset_dir)
+
+    create_dataset(dataset_dir, output_count=3)
+    images, image_texts, image_masks = load_dataset(dataset_dir)
