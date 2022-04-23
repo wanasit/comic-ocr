@@ -176,7 +176,7 @@ def _draw_non_overlap_text_areas(
             text_rect = text_area.text_rect
 
             if text_rect in bound:
-                if not any(rect for rect in drawn_rects if text_rect.is_overlap(rect)):
+                if not any(rect for rect in drawn_rects if Rectangle.is_overlap(text_rect, rect)):
                     drawn_rects.append(text_rect)
                     output.append(text_area)
                     text_area.draw(image)
@@ -218,6 +218,6 @@ if __name__ == "__main__":
     for text_area in text_areas:
         drw = ImageDraw.Draw(image, 'RGBA')
         text_area.draw_text_rect(drw, fill='#3f3fff55')
-        text_area.draw_line_rects(drw, line_fill='#ff0f0f8f')
+        text_area.draw_line_rects(drw, fill='#ff0f0f8f')
 
     image.show()

@@ -73,8 +73,8 @@ def _create_image_mask(
     image = Image.new('RGB', image.size, color_background)
     for text_area in text_areas:
         text_area.draw_text_rect(image, fill=color_rect)
-        text_area.draw_line_rects(image, line_fill=color_line)
-        text_area.draw_text(image, text_fill=color_char)
+        text_area.draw_line_rects(image, fill=color_line)
+        text_area.draw_text(image, fill=color_char)
     return image.convert('RGB')
 
 

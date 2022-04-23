@@ -5,7 +5,9 @@ from typing import Union, Tuple
 from PIL import Image, ImageDraw
 
 Drawable = Union[ImageDraw.Draw, Image.Image]
-Color = Union[str, Tuple[int, int, int, int]]
+
+# Use RGBA or RGB color
+Color = Union[str, Tuple[int, int, int, int], Tuple[int, int, int]]
 
 
 def to_draw(input: Drawable) -> ImageDraw.Draw:

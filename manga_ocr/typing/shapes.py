@@ -82,6 +82,16 @@ class Rectangle(tuple):
             br=(right, bottom)
         )
 
+    @staticmethod
+    def is_overlap(rect_a: RectangleLike, rect_b: RectangleLike):
+        overlap_x = rect_a[0] < rect_b[0] < rect_a[2] or \
+                    rect_b[0] < rect_a[0] < rect_b[2]
+        overlap_y = rect_a[1] < rect_b[1] < rect_a[3] or \
+                    rect_b[1] < rect_a[1] < rect_b[3]
+
+        return overlap_x and overlap_y
+
+
     @property
     def box(self) -> Tuple[int, int, int, int]:
         return self.left, self.top, self.right, self.bottom
@@ -130,13 +140,6 @@ class Rectangle(tuple):
         unit_x = unit if isinstance(unit, int) else unit[0]
         unit_y = unit if isinstance(unit, int) else unit[1]
         return Rectangle((self[0] - unit_x, self[1] - unit_y, self[2] + unit_x, self[3] + unit_y))
-
-    def is_overlap(self, rect: RectangleLike) -> bool:
-        overlap_x = self.left < rect[0] < self.right or \
-                    rect[0] < self.left < rect[2]
-        overlap_y = self.top < rect[1] < self.bottom or \
-                    rect[1] < self.top < rect[3]
-        return overlap_x and overlap_y
 
     def __contains__(self, item):
         if isinstance(item, tuple) or isinstance(item, list):

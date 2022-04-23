@@ -34,13 +34,13 @@ class TextArea:
     def wrapped_text(self):
         return '\n'.join(self.wrapped_text_lines)
 
-    @property
+    @cached_property
     def text_size(self):
         ascent, descent = self.font.getmetrics()
         width, height = self.font.getsize_multiline(self.wrapped_text, spacing=self.text_line_space)
         return Size.of(width + self.padding_x, height + descent + self.padding_y)
 
-    @property
+    @cached_property
     def text_rect(self):
         return Rectangle.of_size(self.text_size, at=self.xy)
 
@@ -50,13 +50,15 @@ class TextArea:
         lines = self.wrapped_text_lines
         rect = self.text_rect
         ascent, descent = self.font.getmetrics()
-        _, x_y1, _, x_y2 = self.font.getbbox("Ay")
-        actual_text_height = x_y2 - x_y1
+        _, actual_y1, _, actual_y2 = self.font.getbbox("Ay")
+        actual_text_height = actual_y2 - actual_y1
         line_height = actual_text_height + self.padding_line_ascent + self.padding_line_decent
-        line_top = rect.top + (descent // 2) - self.padding_line_ascent + (self.padding_y // 2)
+        line_top = rect.top + actual_y1 - self.padding_line_ascent + self.padding_y // 2
 
-        text_height_total = rect.height - descent - self.text_line_space * (len(lines) - 1)
-        line_space = text_height_total // len(lines) + self.text_line_space
+        text_height_total = rect.height - descent - self.text_line_space * (len(lines) - 1) - self.padding_y
+        text_height = text_height_total // len(lines)
+        line_space = text_height + self.text_line_space
+
         rects = []
         for i, line in enumerate(lines):
             rects.append(Line.of(text=line, at=Rectangle.of_xywh(
@@ -72,13 +74,13 @@ class TextArea:
         self.draw_text(draw)
         return self.text_rect
 
-    def draw_text(self, image: Drawable, text_fill: Optional[Color] = None):
+    def draw_text(self, image: Drawable, fill: Optional[Color] = None):
         draw = to_draw(image)
-        text_fill = text_fill if text_fill else self.text_fill
+        fill = fill if fill else self.text_fill
         draw.multiline_text(self.xy.move(self.padding_x // 2, self.padding_y // 2),
                             text=self.wrapped_text,
                             font=self.font,
-                            fill=text_fill,
+                            fill=fill,
                             spacing=self.text_line_space)
 
     def draw_text_rect(self, image: Drawable, fill: Optional[Color] = None):
@@ -86,11 +88,11 @@ class TextArea:
         fill = fill if fill else self.text_fill
         draw.rectangle(self.text_rect, fill=fill)
 
-    def draw_line_rects(self, image: Drawable, line_fill: Optional[Color] = None):
+    def draw_line_rects(self, image: Drawable, fill: Optional[Color] = None):
         draw = to_draw(image)
-        line_fill = line_fill if line_fill else self.text_fill
-        for line_location in self.text_lines():
-            draw.rectangle(line_location.location, fill=line_fill)
+        fill = fill if fill else self.text_fill
+        for line_location in self.text_lines:
+            draw.rectangle(line_location.location, fill=fill)
 
     def draw_background(self, image: Drawable):
         pass
