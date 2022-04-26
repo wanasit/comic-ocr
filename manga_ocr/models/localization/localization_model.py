@@ -6,49 +6,65 @@ import numpy as np
 import torch
 from PIL import Image
 from torch import nn, Tensor
-from torchvision import transforms
 
-from manga_ocr.models.transforms import AddGaussianNoise
+from manga_ocr.models.localization.localization_utils import image_to_input_tensor, output_tensor_to_image_mask
 from manga_ocr.typing import Size, Rectangle
-
-TRANSFORM_TO_TENSOR = transforms.PILToTensor()
-TRANSFORM_TO_GRAY_SCALE = transforms.Grayscale()
-TRANSFORM_ADD_NOISE = AddGaussianNoise()
-
-
-def _debug_show_output(debugging, output, text=''):
-    if debugging:
-        cv2.imshow(text, output)
-        cv2.waitKey(0)
-
-
-def output_tensor_to_image_mask(tensor):
-    return Image.fromarray(np.uint8(tensor.numpy()[0] * 255), 'L').convert('RGB')
 
 
 class LocalizationModel(nn.Module):
-    """
-    (-1, input_size[0], input_size[1])
+    """An abstract for localization Module for text localization
+
+    The ML model (Pytorch) classifies each input image's pixel if it's part of a character, a line boundary, or a
+    paragraph boundary. The model output those probabilities as 'mask images' in training dataset format. Namely, given
+    the input source image, the model is trained to output three types of mask images.
+
+    Args:
+        input_image (Tensor [C x H x W])
+
+    Returns probability maps (un-normalized):
+        output_mask_character (Tensor [H x W]) the probability that the pixel is character/text
+        output_mask_line (Tensor [H x W]) the probability that the pixel is inside line rect boundary
+        output_mask_text (Tensor [H x W]) the probability that the pixel is in text/paragraph rect boundary
+
+    The module also applies other non-ML image-processing techniques on top of the mask images to output the locations.
+
+    Example:
+        model = ....
+        paragraph_rectangles = model.locate_lines(image)
     """
 
-    __call__: Callable[..., Tuple[Tensor, Tensor]]
+    __call__: Callable[..., Tuple[Tensor, Tensor, Tensor]]
 
     def __init__(self):
         super().__init__()
 
     @property
-    def image_size(self) -> Size:
+    def preferred_image_size(self) -> Size:
         return Size.of(500, 500)
 
-    def compute_loss(self, dataset_batch, criterion=nn.BCEWithLogitsLoss(), char_pred_weight=0.5,
-                     line_pre_weight=0.5) -> Tensor:
-        input = dataset_batch['image']
-        mask_line = dataset_batch['mask_line'].float()
-        mask_character = dataset_batch['mask_char'].float()
+    def compute_loss(
+            self,
+            dataset_batch,
+            criterion=nn.BCEWithLogitsLoss(),
+            weight_char_prediction=0.5,
+            weight_line_prediction=0.5,
+            weight_paragraph_prediction=0.001
+    ) -> Tensor:
+        input = dataset_batch['input']
+        output_char, output_line, output_paragraph = self(input)
 
-        output_char, output_line = self(input)
-        loss = criterion(output_char, mask_character) * char_pred_weight + \
-               criterion(output_line, mask_line) * line_pre_weight
+        loss = torch.zeros(1)
+        if 'output_mask_char' in dataset_batch:
+            output = dataset_batch['output_mask_char'].float()
+            loss += criterion(output_char, output) * weight_char_prediction
+
+        if 'output_mask_line' in dataset_batch:
+            output = dataset_batch['output_mask_line'].float()
+            loss += criterion(output_line, output) * weight_line_prediction
+
+        # if 'output_mask_paragraph' in dataset_batch:
+        #     output = dataset_batch['output_mask_paragraph'].float()
+        #     loss += criterion(output_paragraph, output) * weight_paragraph_prediction
 
         return loss
 
@@ -59,29 +75,23 @@ class LocalizationModel(nn.Module):
     def locate_lines(self, image) -> List[Rectangle]:
         with torch.no_grad():
             input_tensor = image_to_input_tensor(image).unsqueeze(0)
-            _, output = self(input_tensor)
+            _, output, _ = self(input_tensor)
             output = torch.sigmoid(output[0])
 
         return locate_lines_in_image_mask(output)
 
-    def create_image_mark_lines(self, image) -> Image.Image:
+    def create_output_marks(self, image) -> Tuple[Image.Image, Image.Image, Image.Image]:
         with torch.no_grad():
             input_tensor = image_to_input_tensor(image).unsqueeze(0)
-            _, output = self(input_tensor)
-            output = torch.sigmoid(output[0])
-        return output_tensor_to_image_mask(output)
+            output_char, output_line, output_paragraph = self(input_tensor)
 
+            output_char = torch.sigmoid(output_char[0])
+            output_line = torch.sigmoid(output_line[0])
+            output_paragraph = torch.sigmoid(output_paragraph[0])
 
-def image_to_input_tensor(image):
-    input = TRANSFORM_TO_TENSOR(image).float() / 255
-    return input
-
-
-def image_mask_to_output_tensor(image, threshold_min: float = 0.5, threshold_max: float = 1.0):
-    output = image_to_input_tensor(image)
-    output = TRANSFORM_TO_GRAY_SCALE(output)
-    output = ((threshold_max >= output) & (output > threshold_min)).float()
-    return output
+        return output_tensor_to_image_mask(output_char), \
+               output_tensor_to_image_mask(output_line), \
+               output_tensor_to_image_mask(output_paragraph)
 
 
 def locate_lines_in_image_mask(
@@ -178,7 +188,7 @@ if __name__ == '__main__':
         print('Creating a new model...')
         model = ConvUnet()
 
-    #example = load_image(get_path_project_dir('example/manga_generated/image/0001.jpg'))
+    # example = load_image(get_path_project_dir('example/manga_generated/image/0001.jpg'))
     example = load_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))
     paragraphs = model.locate_paragraphs(example)
 
@@ -188,4 +198,7 @@ if __name__ == '__main__':
     lines = [l for _, lines in paragraphs for l in lines]
     image_with_annotations(example, lines).show()
 
-    model.create_image_mark_lines(example).show()
+    output_char, output_line, output_paragraph = model.create_output_marks(example)
+    output_char.show()
+    output_line.show()
+    output_paragraph.show()

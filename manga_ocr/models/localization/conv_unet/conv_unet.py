@@ -3,7 +3,6 @@ import os
 import torch
 from torch import nn
 
-
 import torch.nn.functional as F
 
 from manga_ocr.models.localization.localization_model import LocalizationModel
@@ -34,6 +33,11 @@ class ConvUnet(LocalizationModel):
             nn.Conv2d(16, 1, kernel_size=1),
         )
 
+        self.output_conv_paragraph = nn.Sequential(
+            nn.Conv2d(32 + 3, 16, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(16, 1, kernel_size=1),
+        )
+
     def forward(self, x):
         down_3 = self.down_conv_3(x)
         down_2 = self.down_conv_2(down_3)
@@ -56,7 +60,9 @@ class ConvUnet(LocalizationModel):
 
         y_char = self.output_conv_char(y)
         y_line = self.output_conv_line(y)
-        return y_char, y_line
+        y_paragraph = self.output_conv_paragraph(y)
+
+        return y_char[:, 0, :], y_line[:, 0, :], y_paragraph[:, 0, :]
 
 
 class ConvWithPoolingToHalfSize(nn.Module):
@@ -108,5 +114,5 @@ if __name__ == '__main__':
     output_images = load_images(module_path + "/../../../out/generate/output/*.jpg")
 
     model = ConvUnet()
-    #input = model.image_to_input(input_images[0]).unsqueeze(0)
-    #output_char, output_mask = model(input)
+    # input = model.image_to_input(input_images[0]).unsqueeze(0)
+    # output_char, output_mask = model(input)
