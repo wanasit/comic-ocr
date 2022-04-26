@@ -33,11 +33,6 @@ class ConvUnet(LocalizationModel):
             nn.Conv2d(16, 1, kernel_size=1),
         )
 
-        self.output_conv_paragraph = nn.Sequential(
-            nn.Conv2d(32 + 3, 16, kernel_size=3, padding=1), nn.ReLU(inplace=True),
-            nn.Conv2d(16, 1, kernel_size=1),
-        )
-
     def forward(self, x):
         down_3 = self.down_conv_3(x)
         down_2 = self.down_conv_2(down_3)
@@ -60,9 +55,8 @@ class ConvUnet(LocalizationModel):
 
         y_char = self.output_conv_char(y)
         y_line = self.output_conv_line(y)
-        y_paragraph = self.output_conv_paragraph(y)
 
-        return y_char[:, 0, :], y_line[:, 0, :], y_paragraph[:, 0, :]
+        return y_char[:, 0, :], y_line[:, 0, :]
 
 
 class ConvWithPoolingToHalfSize(nn.Module):
@@ -105,10 +99,11 @@ class DoubleConvWithSecondInput(nn.Module):
         return x
 
 
-from torchvision import models
-from torchvision.models.vgg import model_urls
 
 if __name__ == '__main__':
+    from torchvision import models
+    from torchvision.models.vgg import model_urls
+
     module_path = os.path.dirname(__file__)
     input_images = load_images(module_path + "/../../../out/generate/input/*.jpg")
     output_images = load_images(module_path + "/../../../out/generate/output/*.jpg")

@@ -16,10 +16,9 @@ def test_conv_unet_forward():
         example_generated_dataset_dir, image_size=model.preferred_image_size)
 
     input_image = image_to_input_tensor(dataset.images[0]).unsqueeze(0)
-    output_char, output_line, output_paragraph = model(input_image)
+    output_char, output_line = model(input_image)
     assert output_char.shape == (1, 500, 500)
     assert output_line.shape == (1, 500, 500)
-    assert output_paragraph.shape == (1, 500, 500)
 
 
 def test_conv_unet_loss():

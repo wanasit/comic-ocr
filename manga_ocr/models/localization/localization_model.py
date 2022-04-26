@@ -24,7 +24,6 @@ class LocalizationModel(nn.Module):
     Returns probability maps (un-normalized):
         output_mask_character (Tensor [H x W]) the probability that the pixel is character/text
         output_mask_line (Tensor [H x W]) the probability that the pixel is inside line rect boundary
-        output_mask_text (Tensor [H x W]) the probability that the pixel is in text/paragraph rect boundary
 
     The module also applies other non-ML image-processing techniques on top of the mask images to output the locations.
 
@@ -33,7 +32,7 @@ class LocalizationModel(nn.Module):
         paragraph_rectangles = model.locate_lines(image)
     """
 
-    __call__: Callable[..., Tuple[Tensor, Tensor, Tensor]]
+    __call__: Callable[..., Tuple[Tensor, Tensor]]
 
     def __init__(self):
         super().__init__()
@@ -48,10 +47,9 @@ class LocalizationModel(nn.Module):
             criterion=nn.BCEWithLogitsLoss(),
             weight_char_prediction=0.5,
             weight_line_prediction=0.5,
-            weight_paragraph_prediction=0.001
     ) -> Tensor:
         input = dataset_batch['input']
-        output_char, output_line, output_paragraph = self(input)
+        output_char, output_line = self(input)
 
         loss = torch.zeros(1)
         if 'output_mask_char' in dataset_batch:
@@ -62,10 +60,6 @@ class LocalizationModel(nn.Module):
             output = dataset_batch['output_mask_line'].float()
             loss += criterion(output_line, output) * weight_line_prediction
 
-        # if 'output_mask_paragraph' in dataset_batch:
-        #     output = dataset_batch['output_mask_paragraph'].float()
-        #     loss += criterion(output_paragraph, output) * weight_paragraph_prediction
-
         return loss
 
     def locate_paragraphs(self, image) -> List[Tuple[Rectangle, List[Rectangle]]]:
@@ -75,23 +69,21 @@ class LocalizationModel(nn.Module):
     def locate_lines(self, image) -> List[Rectangle]:
         with torch.no_grad():
             input_tensor = image_to_input_tensor(image).unsqueeze(0)
-            _, output, _ = self(input_tensor)
+            _, output = self(input_tensor)
             output = torch.sigmoid(output[0])
 
         return locate_lines_in_image_mask(output)
 
-    def create_output_marks(self, image) -> Tuple[Image.Image, Image.Image, Image.Image]:
+    def create_output_marks(self, image) -> Tuple[Image.Image, Image.Image]:
         with torch.no_grad():
             input_tensor = image_to_input_tensor(image).unsqueeze(0)
-            output_char, output_line, output_paragraph = self(input_tensor)
+            output_char, output_line = self(input_tensor)
 
             output_char = torch.sigmoid(output_char[0])
             output_line = torch.sigmoid(output_line[0])
-            output_paragraph = torch.sigmoid(output_paragraph[0])
 
         return output_tensor_to_image_mask(output_char), \
-               output_tensor_to_image_mask(output_line), \
-               output_tensor_to_image_mask(output_paragraph)
+               output_tensor_to_image_mask(output_line)
 
 
 def locate_lines_in_image_mask(
