@@ -49,10 +49,13 @@ def lines_to_nb_annotation_data(lines: List[Line]) -> Dict:
     }
 
 
-def lines_from_nb_annotation_data(annotation_data: Dict) -> List[Line]:
+def lines_from_nb_annotation_data(
+        annotation_data: Dict,
+        empty_text: Optional[str] = None
+) -> List[Line]:
     lines = []
     for a in annotation_data['annotations']:
-        line = line_from_nb_annotation(a)
+        line = line_from_nb_annotation(a, empty_text=empty_text)
         if line:
             lines.append(line)
 
@@ -65,11 +68,18 @@ def line_to_nb_annotation(line: Line) -> Dict:
     return annotation
 
 
-def line_from_nb_annotation(annotation) -> Optional[Line]:
+def line_from_nb_annotation(
+        annotation,
+        empty_text: Optional[str] = None
+) -> Optional[Line]:
     rect = rect_from_annotation(annotation)
     if 'text' in annotation:
         text = annotation['text']
         return Line.of(text, rect)
+
+    if empty_text is not None:
+        return Line.of(empty_text, rect)
+
     return None
 
 

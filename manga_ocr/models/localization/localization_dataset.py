@@ -97,7 +97,8 @@ class LocalizationDataset(torch.utils.data.Dataset):
 
     @staticmethod
     def load_line_annotated_manga_dataset(directory, image_size: Size = Size.of(500, 500)):
-        original_images, annotations = annotated_manga.load_line_annotated_dataset(directory)
+        original_images, annotations = annotated_manga.load_line_annotated_dataset(
+            directory, include_empty_text=True)
 
         images = []
         output_masks_line = []

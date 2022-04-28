@@ -7,11 +7,28 @@ def test_load_example_dataset():
     example_dataset_dir = get_path_example_dir('manga_annotated')
     images, image_texts = load_line_annotated_dataset(example_dataset_dir)
 
-    assert len(images) == 1
-    assert len(image_texts) == 1
+    assert len(images) == 3
+    assert len(image_texts) == 3
 
     image, lines = images[0], image_texts[0]
     assert image.size == (707, 1000)
+    assert len(lines) == 4
     assert lines[0].text == 'DEPRESSION'
 
+    image, lines = images[1], image_texts[1]
+    assert image.size == (707, 1000)
+    assert len(lines) == 0
+
+
+def test_load_example_dataset_include_empty_text():
+
+    example_dataset_dir = get_path_example_dir('manga_annotated')
+    images, image_texts = load_line_annotated_dataset(example_dataset_dir, include_empty_text=True)
+
+    assert len(images) == 3
+    assert len(image_texts) == 3
+
+    image, lines = images[1], image_texts[1]
+    assert image.size == (707, 1000)
+    assert len(lines) == 14
 

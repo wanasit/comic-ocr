@@ -2,11 +2,10 @@ from typing import List, Tuple
 
 from PIL.Image import Image
 
-from manga_ocr.models.localization.localization_model import LocalizationModel
+from manga_ocr.models import localization
 from manga_ocr.typing import Rectangle
 from manga_ocr.utils.files import get_path_project_dir
 
-_localization_model_path = get_path_project_dir('trained_models/localization.bin')
 _localization_model = None
 
 
@@ -20,14 +19,9 @@ def localize_paragraphs(image: Image) -> List[Tuple[Rectangle, List[Rectangle]]]
     return model.locate_paragraphs(image)
 
 
-def get_localization_model() -> LocalizationModel:
+def get_localization_model() -> localization.LocalizationModel:
     global _localization_model
     if not _localization_model:
-        import torch
-        _localization_model = torch.load(_localization_model_path)
+        _localization_model = localization.load_model()
 
     return _localization_model
-
-
-
-

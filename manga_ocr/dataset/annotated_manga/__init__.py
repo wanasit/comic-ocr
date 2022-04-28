@@ -9,7 +9,7 @@ Example:
 
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from PIL.Image import Image
 
@@ -18,7 +18,10 @@ from manga_ocr.utils.files import load_images_with_annotation
 from manga_ocr.utils.nb_annotation import lines_from_nb_annotation_data
 
 
-def load_line_annotated_dataset(dataset_dir: str) -> Tuple[List[Image], List[List[Line]]]:
+def load_line_annotated_dataset(
+        dataset_dir: str,
+        include_empty_text: bool = False
+) -> Tuple[List[Image], List[List[Line]]]:
     """Load dataset with annotation-per text line
 
     Args:
@@ -34,7 +37,8 @@ def load_line_annotated_dataset(dataset_dir: str) -> Tuple[List[Image], List[Lis
         if not annotation_data:
             continue
 
-        lines = lines_from_nb_annotation_data(annotation_data)
+        lines = lines_from_nb_annotation_data(
+            annotation_data, empty_text='' if include_empty_text else None)
         image_texts.append(lines)
 
     return images, image_texts
