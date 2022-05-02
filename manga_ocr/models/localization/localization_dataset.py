@@ -1,15 +1,19 @@
+from __future__ import annotations
 from typing import List, Optional
+import random
 
+import numpy as np
 import torch
-from PIL import Image
+from PIL import Image, ImageOps
 from torch.utils.data import Dataset
+from torchvision.transforms.functional import pil_to_tensor
 
 from manga_ocr.dataset import annotated_manga
 from manga_ocr.dataset import generated_manga
 from manga_ocr.models.localization.localization_utils import divine_rect_into_overlapping_tiles, \
     output_tensor_to_image_mask
 from manga_ocr.models.localization.localization_utils import image_mask_to_output_tensor, image_to_input_tensor
-from manga_ocr.typing import Size
+from manga_ocr.typing import Size, SizeLike
 
 
 class LocalizationDataset(torch.utils.data.Dataset):
@@ -50,6 +54,9 @@ class LocalizationDataset(torch.utils.data.Dataset):
 
         return output
 
+    def get_image_size(self) -> Size:
+        return Size(self.images[0].size)
+
     def get_image(self, idx):
         return self.images[idx]
 
@@ -62,7 +69,6 @@ class LocalizationDataset(torch.utils.data.Dataset):
     def get_mask_paragraph(self, idx):
         return output_tensor_to_image_mask(self.output_masks_paragraph[idx]) if self.output_masks_paragraph else None
 
-
     def subset(self, from_idx: Optional[int] = None, to_idx: Optional[int] = None):
         from_idx = from_idx if from_idx is not None else 0
         to_dix = to_idx if to_idx is not None else len(self.images)
@@ -72,6 +78,34 @@ class LocalizationDataset(torch.utils.data.Dataset):
             self.output_masks_line[from_idx:to_dix] if self.output_masks_line else None,
             self.output_masks_paragraph[from_idx:to_dix] if self.output_masks_paragraph else None
         )
+
+    @staticmethod
+    def merge(dataset_a: LocalizationDataset, dataset_b: LocalizationDataset, shuffle=True):
+        assert dataset_a.get_image_size() == dataset_b.get_image_size(), \
+            'Can only merge dataset with the same image size. TODO: add this later'
+
+        images = dataset_a.images + dataset_b.images
+        output_masks_char = dataset_a.output_masks_char + dataset_b.output_masks_char \
+            if dataset_b.output_masks_char and dataset_b.output_masks_char else None
+        output_masks_line = dataset_a.output_masks_line + dataset_b.output_masks_line \
+            if dataset_b.output_masks_line and dataset_b.output_masks_line else None
+        output_masks_paragraph = dataset_a.output_masks_paragraph + dataset_b.output_masks_paragraph \
+            if dataset_b.output_masks_paragraph and dataset_b.output_masks_paragraph else None
+
+        indexes = list(range(len(images)))
+        if shuffle:
+            random.shuffle(indexes)
+
+        images = [images[i] for i in indexes]
+        output_masks_char = [output_masks_char[i] for i in indexes] if output_masks_char else None
+        output_masks_line = [output_masks_line[i] for i in indexes] if output_masks_line else None
+        output_masks_paragraph = [output_masks_paragraph[i] for i in indexes] if output_masks_paragraph else None
+
+        return LocalizationDataset(
+            images=images,
+            output_masks_char=output_masks_char,
+            output_masks_line=output_masks_line,
+            output_masks_paragraph=output_masks_paragraph)
 
     @staticmethod
     def load_generated_manga_dataset(directory, image_size: Size = Size.of(500, 500)):
@@ -101,22 +135,28 @@ class LocalizationDataset(torch.utils.data.Dataset):
             directory, include_empty_text=True)
 
         images = []
+        output_masks_char = []
         output_masks_line = []
 
         for image, lines in zip(original_images, annotations):
             mask_image = torch.zeros(size=(image.height, image.width))
+            mask_char_image = torch.zeros(size=(image.height, image.width))
+            original_image = pil_to_tensor(image.convert('L'))[0] / 255
             for l in lines:
                 mask_image[l.location.top: l.location.bottom, l.location.left:l.location.right] = 1.0
+                mask_char_image[l.location.top: l.location.bottom, l.location.left:l.location.right] = \
+                    1 - original_image[l.location.top: l.location.bottom, l.location.left:l.location.right]
 
             tile_overlap_x = image.width // 4
             tile_overlap_y = image.width // 4
             for tile in divine_rect_into_overlapping_tiles(
                     Size(image.size), tile_size=image_size, min_overlap_x=tile_overlap_x, min_overlap_y=tile_overlap_y):
-
                 images.append(image.crop(tile))
                 output_masks_line.append(mask_image[tile.top:tile.bottom, tile.left:tile.right])
+                output_masks_char.append(mask_char_image[tile.top:tile.bottom, tile.left:tile.right])
 
-        return LocalizationDataset(images=images, output_masks_line=output_masks_line)
+        return LocalizationDataset(images=images, output_masks_char=output_masks_char,
+                                   output_masks_line=output_masks_line)
 
     @staticmethod
     def _split_or_pad_images_into_size(

@@ -8,7 +8,7 @@ class Point(tuple):
     A tuple of [x, y] with helper functions
     """
 
-    def __new__(cls, point: Tuple[int, int]):
+    def __new__(cls, point: PointLike):
         return tuple.__new__(Point, point)
 
     @staticmethod
@@ -32,7 +32,7 @@ class Size(tuple):
     A tuple of [w, h] with helper functions
     """
 
-    def __new__(cls, size: Tuple[int, int]):
+    def __new__(cls, size: SizeLike):
         return tuple.__new__(Size, size)
 
     @staticmethod
@@ -90,7 +90,6 @@ class Rectangle(tuple):
                     rect_b[1] < rect_a[1] < rect_b[3]
 
         return overlap_x and overlap_y
-
 
     @property
     def box(self) -> Tuple[int, int, int, int]:
@@ -154,6 +153,18 @@ class Rectangle(tuple):
 
         return tuple.__contains__(self, item)
 
+
+PointLike = Union[
+    Tuple[int, int],
+    List[int],
+    Point
+]
+
+SizeLike = Union[
+    Tuple[int, int],
+    List[int],
+    Size
+]
 
 RectangleLike = Union[
     Tuple[int, int, int, int],

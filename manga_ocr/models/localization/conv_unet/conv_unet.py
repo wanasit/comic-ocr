@@ -14,22 +14,22 @@ class ConvUnet(LocalizationModel):
     def __init__(self):
         super(ConvUnet, self).__init__()
 
-        self.down_conv_3 = ConvWithPoolingToHalfSize(3, num_output_channel=16)
-        self.down_conv_2 = ConvWithPoolingToHalfSize(16, num_output_channel=32)
-        self.down_conv_1 = ConvWithPoolingToHalfSize(32, num_output_channel=64)
-        self.down_conv_0 = ConvWithPoolingToHalfSize(64, num_output_channel=128)
+        self.down_conv_3 = ConvWithPoolingToHalfSize(3, num_output_channel=8)
+        self.down_conv_2 = ConvWithPoolingToHalfSize(8, kernel_size=5, padding=2, num_output_channel=16)
+        self.down_conv_1 = ConvWithPoolingToHalfSize(16, kernel_size=5, padding=2, num_output_channel=32)
+        self.down_conv_0 = ConvWithPoolingToHalfSize(32, kernel_size=5, padding=2, num_output_channel=64)
 
-        self.up_conv1 = DoubleConvWithSecondInput(128, 64, num_output_channel=128)
-        self.up_conv2 = DoubleConvWithSecondInput(128, 32, num_output_channel=64)
-        self.up_conv3 = DoubleConvWithSecondInput(64, 16, num_output_channel=32)
+        self.up_conv1 = DoubleConvWithSecondInput(64, 32, num_output_channel=64)
+        self.up_conv2 = DoubleConvWithSecondInput(64, 16, num_output_channel=64)
+        self.up_conv3 = DoubleConvWithSecondInput(64, 8, num_output_channel=64)
 
         self.output_conv_char = nn.Sequential(
-            nn.Conv2d(32 + 3, 16, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(64 + 3, 16, kernel_size=1), nn.ReLU(inplace=True),
             nn.Conv2d(16, 1, kernel_size=1),
         )
 
         self.output_conv_line = nn.Sequential(
-            nn.Conv2d(32 + 3, 16, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(64 + 3, 16, kernel_size=1), nn.ReLU(inplace=True),
             nn.Conv2d(16, 1, kernel_size=1),
         )
 
