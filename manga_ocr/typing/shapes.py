@@ -47,6 +47,10 @@ class Size(tuple):
     def height(self) -> int:
         return self[1]
 
+    @property
+    def value(self) -> int:
+        return self[0] * self[1]
+
 
 class Rectangle(tuple):
     """
@@ -55,7 +59,7 @@ class Rectangle(tuple):
     e.g. draw.rectangle(rect) or image.crop(rect)
     """
 
-    def __new__(cls, rect: RectangleLike):
+    def __new__(cls, rect: RectangleLike) -> Rectangle:
         return tuple.__new__(Rectangle, rect)
 
     @staticmethod
@@ -71,6 +75,22 @@ class Rectangle(tuple):
         return Rectangle([tl[0], tl[1], br[0], br[1]])
 
     @staticmethod
+    def intersect_bounding_rect(rectangles: Iterable[Rectangle]):
+        top, left, bottom, right = -float('inf'), -float('inf'), float('inf'), float('inf')
+        for rect in rectangles:
+            top, left = max(top, rect[1]), max(left, rect[0])
+            bottom, right = min(bottom, rect[3]), min(right, rect[2])
+
+        if bottom <= top or right <= left:
+            return None
+
+        return Rectangle.of_tl_br(
+            tl=(left, top),
+            br=(right, bottom)
+        )
+
+
+    @staticmethod
     def union_bounding_rect(rectangles: Iterable[Rectangle]):
         top, left, bottom, right = float('inf'), float('inf'), -float('inf'), -float('inf')
         for rect in rectangles:
@@ -84,12 +104,25 @@ class Rectangle(tuple):
 
     @staticmethod
     def is_overlap(rect_a: RectangleLike, rect_b: RectangleLike):
-        overlap_x = rect_a[0] < rect_b[0] < rect_a[2] or \
-                    rect_b[0] < rect_a[0] < rect_b[2]
-        overlap_y = rect_a[1] < rect_b[1] < rect_a[3] or \
-                    rect_b[1] < rect_a[1] < rect_b[3]
+        overlap_x = rect_a[0] <= rect_b[0] < rect_a[2] or \
+                    rect_b[0] <= rect_a[0] < rect_b[2]
+        overlap_y = rect_a[1] <= rect_b[1] < rect_a[3] or \
+                    rect_b[1] <= rect_a[1] < rect_b[3]
 
         return overlap_x and overlap_y
+
+    @staticmethod
+    def jaccard_similarity(rect_a: RectangleLike, rect_b: RectangleLike) -> float:
+        if not Rectangle.is_overlap(rect_a, rect_b):
+            return 0.0
+
+        rect_a = Rectangle(rect_a)
+        rect_b = Rectangle(rect_b)
+        rect_intersect = Rectangle.intersect_bounding_rect((rect_a, rect_b))
+
+        intersect_size = rect_intersect.size.value
+        union_size = rect_a.size.value + rect_b.size.value - intersect_size
+        return intersect_size / union_size
 
     @property
     def box(self) -> Tuple[int, int, int, int]:
@@ -135,14 +168,21 @@ class Rectangle(tuple):
     def br(self) -> Point:
         return Point((self[2], self[3]))
 
+    def move(self, unit_x: int, unit_y: int) -> Rectangle:
+        return Rectangle((self[0] + unit_x, self[1] + unit_y, self[2] + unit_x, self[3] + unit_y))
+
     def expand(self, unit: Union[int, Tuple]) -> Rectangle:
         unit_x = unit if isinstance(unit, int) else unit[0]
         unit_y = unit if isinstance(unit, int) else unit[1]
         return Rectangle((self[0] - unit_x, self[1] - unit_y, self[2] + unit_x, self[3] + unit_y))
 
-    def __contains__(self, item):
-        if isinstance(item, tuple) or isinstance(item, list):
+    def close_to(self, rect: RectangleLike, threshold=0.7) -> bool:
+        similarity = Rectangle.jaccard_similarity(self, rect)
+        return similarity >= threshold
 
+    def __contains__(self, item: Union[RectangleLike, PointLike]) -> bool:
+
+        if isinstance(item, tuple) or isinstance(item, list):
             if len(item) == 2:  # rect contains point
                 x, y = item
                 return (self.left <= x <= self.right) and (self.top <= y <= self.bottom)
@@ -152,6 +192,9 @@ class Rectangle(tuple):
                 return (self.left <= x1 <= x2 <= self.right) and (self.top <= y1 <= y2 <= self.bottom)
 
         return tuple.__contains__(self, item)
+
+    def __repr__ (self):
+        return f'Rect(size={self.width, self.height}, at={self[0], self[1]} )'
 
 
 PointLike = Union[

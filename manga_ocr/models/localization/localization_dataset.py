@@ -1,19 +1,20 @@
 from __future__ import annotations
-from typing import List, Optional
-import random
 
-import numpy as np
+import random
+from typing import List, Optional
+
 import torch
-from PIL import Image, ImageOps
+from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms.functional import pil_to_tensor
 
 from manga_ocr.dataset import annotated_manga
 from manga_ocr.dataset import generated_manga
-from manga_ocr.models.localization.localization_utils import divine_rect_into_overlapping_tiles, \
-    output_tensor_to_image_mask
-from manga_ocr.models.localization.localization_utils import image_mask_to_output_tensor, image_to_input_tensor
-from manga_ocr.typing import Size, SizeLike
+from manga_ocr.models.localization.localization_utils import divine_rect_into_overlapping_tiles
+from manga_ocr.models.localization.localization_utils import image_mask_to_output_tensor
+from manga_ocr.models.localization.localization_utils import image_to_input_tensor
+from manga_ocr.models.localization.localization_utils import output_tensor_to_image_mask
+from manga_ocr.typing import Size, Rectangle
 
 
 class LocalizationDataset(torch.utils.data.Dataset):
@@ -23,16 +24,19 @@ class LocalizationDataset(torch.utils.data.Dataset):
                  output_masks_char: Optional[List[torch.Tensor]] = None,
                  output_masks_line: Optional[List[torch.Tensor]] = None,
                  output_masks_paragraph: Optional[List[torch.Tensor]] = None,
+                 output_locations_lines: Optional[List[List[Rectangle]]] = None,
                  ):
         assert len(images)
         assert output_masks_char is None or len(output_masks_char) == len(images)
         assert output_masks_line is None or len(output_masks_line) == len(images)
         assert output_masks_paragraph is None or len(output_masks_paragraph) == len(images)
+        assert output_locations_lines is None or len(output_locations_lines) == len(images)
 
         self.images = images
         self.output_masks_char = output_masks_char
         self.output_masks_line = output_masks_line
         self.output_masks_paragraph = output_masks_paragraph
+        self.output_locations_lines = output_locations_lines
 
     def __len__(self):
         return len(self.images)
@@ -57,17 +61,20 @@ class LocalizationDataset(torch.utils.data.Dataset):
     def get_image_size(self) -> Size:
         return Size(self.images[0].size)
 
-    def get_image(self, idx):
+    def get_image(self, idx) -> Image.Image:
         return self.images[idx]
 
-    def get_mask_char(self, idx):
+    def get_mask_char(self, idx) -> Image.Image:
         return output_tensor_to_image_mask(self.output_masks_char[idx]) if self.output_masks_char else None
 
-    def get_mask_line(self, idx):
+    def get_mask_line(self, idx) -> Image.Image:
         return output_tensor_to_image_mask(self.output_masks_line[idx]) if self.output_masks_line else None
 
-    def get_mask_paragraph(self, idx):
+    def get_mask_paragraph(self, idx) -> Image.Image:
         return output_tensor_to_image_mask(self.output_masks_paragraph[idx]) if self.output_masks_paragraph else None
+
+    def get_line_locations(self, idx) -> List[Rectangle]:
+        return self.output_locations_lines[idx] if self.output_locations_lines else None
 
     def subset(self, from_idx: Optional[int] = None, to_idx: Optional[int] = None):
         from_idx = from_idx if from_idx is not None else 0
@@ -76,8 +83,30 @@ class LocalizationDataset(torch.utils.data.Dataset):
             self.images[from_idx:to_dix],
             self.output_masks_char[from_idx:to_dix] if self.output_masks_char else None,
             self.output_masks_line[from_idx:to_dix] if self.output_masks_line else None,
-            self.output_masks_paragraph[from_idx:to_dix] if self.output_masks_paragraph else None
+            self.output_masks_paragraph[from_idx:to_dix] if self.output_masks_paragraph else None,
+            self.output_locations_lines[from_idx:to_dix] if self.output_locations_lines else None
         )
+
+    def shuffle(self) -> LocalizationDataset:
+        indexes = list(range(len(self.images)))
+        random.shuffle(indexes)
+
+        images = [self.images[i] for i in indexes]
+        output_masks_char = [self.output_masks_char[i] for i in indexes] \
+            if self.output_masks_char else None
+        output_masks_line = [self.output_masks_line[i] for i in indexes] \
+            if self.output_masks_line else None
+        output_masks_paragraph = [self.output_masks_paragraph[i] for i in indexes] \
+            if self.output_masks_paragraph else None
+        output_location_lines = [self.output_locations_lines[i] for i in indexes] \
+            if self.output_locations_lines else None
+
+        return LocalizationDataset(
+            images=images,
+            output_masks_char=output_masks_char,
+            output_masks_line=output_masks_line,
+            output_masks_paragraph=output_masks_paragraph,
+            output_locations_lines=output_location_lines)
 
     @staticmethod
     def merge(dataset_a: LocalizationDataset, dataset_b: LocalizationDataset, shuffle=True):
@@ -91,21 +120,15 @@ class LocalizationDataset(torch.utils.data.Dataset):
             if dataset_b.output_masks_line and dataset_b.output_masks_line else None
         output_masks_paragraph = dataset_a.output_masks_paragraph + dataset_b.output_masks_paragraph \
             if dataset_b.output_masks_paragraph and dataset_b.output_masks_paragraph else None
-
-        indexes = list(range(len(images)))
-        if shuffle:
-            random.shuffle(indexes)
-
-        images = [images[i] for i in indexes]
-        output_masks_char = [output_masks_char[i] for i in indexes] if output_masks_char else None
-        output_masks_line = [output_masks_line[i] for i in indexes] if output_masks_line else None
-        output_masks_paragraph = [output_masks_paragraph[i] for i in indexes] if output_masks_paragraph else None
+        output_locations_lines = dataset_a.output_locations_lines + dataset_b.output_locations_lines \
+            if dataset_b.output_locations_lines and dataset_b.output_locations_lines else None
 
         return LocalizationDataset(
             images=images,
             output_masks_char=output_masks_char,
             output_masks_line=output_masks_line,
-            output_masks_paragraph=output_masks_paragraph)
+            output_masks_paragraph=output_masks_paragraph,
+            output_locations_lines=output_locations_lines)
 
     @staticmethod
     def load_generated_manga_dataset(directory, image_size: Size = Size.of(500, 500)):
@@ -137,6 +160,7 @@ class LocalizationDataset(torch.utils.data.Dataset):
         images = []
         output_masks_char = []
         output_masks_line = []
+        output_locations_lines = []
 
         for image, lines in zip(original_images, annotations):
             mask_image = torch.zeros(size=(image.height, image.width))
@@ -155,8 +179,21 @@ class LocalizationDataset(torch.utils.data.Dataset):
                 output_masks_line.append(mask_image[tile.top:tile.bottom, tile.left:tile.right])
                 output_masks_char.append(mask_char_image[tile.top:tile.bottom, tile.left:tile.right])
 
-        return LocalizationDataset(images=images, output_masks_char=output_masks_char,
-                                   output_masks_line=output_masks_line)
+                location_lines = []
+                for l in lines:
+                    new_location = Rectangle.intersect_bounding_rect((l.location, tile))
+                    if new_location:
+                        new_location = new_location.move(-tile.left, -tile.top)
+                        location_lines.append(new_location)
+
+                output_locations_lines.append(location_lines)
+
+        return LocalizationDataset(
+            images=images,
+            output_masks_char=output_masks_char,
+            output_masks_line=output_masks_line,
+            output_locations_lines=output_locations_lines
+        )
 
     @staticmethod
     def _split_or_pad_images_into_size(

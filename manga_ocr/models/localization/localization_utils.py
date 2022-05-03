@@ -3,7 +3,7 @@
 """
 
 import math
-from typing import Union
+from typing import Union, Iterable
 
 import numpy as np
 import torch
@@ -45,6 +45,36 @@ def output_tensor_to_image_mask(tensor_or_array: Union[torch.Tensor, np.ndarray]
         array = array.mean(0)
 
     return Image.fromarray(np.uint8(array * 255), 'L').convert('RGB')
+
+
+def match_locations_with_baseline(locations: Iterable[Rectangle], baseline_locations: Iterable[Rectangle]):
+    """Divide the rectangle or size into smaller tiles of the target size.
+
+    This function overlaps the tile contents. This duplication is expected because we want to minimize information loss
+    when train the model on divided images. The minimum overlap can be controlled by parameter.
+
+    Args:
+        locations (Iterable[Rectangle]) the output or the predicted locations.
+        baseline_locations (Iterable[Rectangle]) the baseline locations.
+
+    Returns:
+        matched_pairs (List[Rectangle, Rectangle]) the pairs of location and its matched baseline location
+        unmatched_locations (List[Rectangle]) the locations where there is no match
+        unmatched_baseline_locations (List[Rectangle]) the baseline locations where there is no match
+    """
+    matched_pairs = []
+    unmatched_locations = []
+
+    for location in locations:
+        for i, baseline_location in enumerate(baseline_locations):
+            if location.close_to(baseline_location):
+                matched_pairs.append((location, baseline_location))
+                baseline_locations = baseline_locations[:i] + baseline_locations[i + 1:]
+                break
+        else:
+            unmatched_locations.append(location)
+
+    return matched_pairs, unmatched_locations, baseline_locations
 
 
 def divine_rect_into_overlapping_tiles(

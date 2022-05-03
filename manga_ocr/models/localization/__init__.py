@@ -8,6 +8,8 @@ import logging
 import torch
 
 from manga_ocr.models.localization.localization_model import LocalizationModel
+from manga_ocr.models.localization.localization_dataset import LocalizationDataset
+from manga_ocr.models.localization.localization_utils import match_locations_with_baseline
 from manga_ocr.utils.files import PathLike, get_path_project_dir, load_image
 
 DEFAULT_TRAINED_MODEL_FILE = get_path_project_dir('trained_models/localization.bin')
@@ -16,13 +18,17 @@ DEFAULT_EXAMPLE_IMAGE = get_path_project_dir('example/manga_annotated/normal_01.
 logger = logging.getLogger(__name__)
 
 
-def load_or_create_default_model(model_file: PathLike = DEFAULT_TRAINED_MODEL_FILE) -> LocalizationModel:
+def load_or_create_new_model(model_file: PathLike = DEFAULT_TRAINED_MODEL_FILE) -> LocalizationModel:
     try:
         model = load_model(model_file)
         model()
     except:
         logger.info(f'Fail loading model at [{model_file}]. Creating a new model.')
 
+    return create_new_model()
+
+
+def create_new_model() -> LocalizationModel:
     from manga_ocr.models.localization.conv_unet.conv_unet import ConvUnet
     return ConvUnet()
 
@@ -40,3 +46,32 @@ def load_model(
         _ = model.locate_paragraphs(image)
 
     return model
+
+
+def calculate_high_level_metrics(
+        model: LocalizationModel,
+        dataset: LocalizationDataset
+):
+    assert len(dataset) > 0
+    assert dataset.output_locations_lines, 'Requires dataset with line locations information'
+    total_tp = 0
+    total_fp = 0
+    total_fn = 0
+
+    for i in range(len(dataset)):
+        baseline_line_locations = dataset.get_line_locations(i)
+        line_locations = model.locate_lines(dataset.get_image(i))
+        tp, fp, fn = match_locations_with_baseline(line_locations, baseline_line_locations)
+        tp, fp, fn = len(tp), len(fp), len(fn)
+        total_tp += tp
+        total_fp += fp
+        total_fn += fn
+
+    return {
+        "dataset_size": len(dataset),
+        "total_line_level_true_positive": total_tp,
+        "total_line_level_false_positive": total_fp,
+        "total_line_level_false_negative": total_fn,
+        "line_level_precision": total_tp / (total_tp + total_fp),
+        "line_level_recall": total_tp / (total_tp + total_fn)
+    }

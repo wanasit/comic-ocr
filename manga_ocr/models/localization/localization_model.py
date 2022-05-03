@@ -89,8 +89,8 @@ class LocalizationModel(nn.Module):
 def locate_lines_in_image_mask(
         output_tensor: Union[np.ndarray, Tensor],
         output_threshold: float = 0.95,
-        line_output_density_threshold: float = 0.80,
         line_output_min_size: Size = Size.of(10, 10),
+        line_padding: Tuple[int, int] = (2, 1),
         debugging=True
 ) -> List[Rectangle]:
     """Locate the line locations in the output tensor or array
@@ -114,7 +114,7 @@ def locate_lines_in_image_mask(
     # _debug_show_output(True, thresh)
 
     output_rects = []
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(thresh.astype(np.uint8), connectivity=8)
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(thresh.astype(np.uint8), connectivity=4)
     for i in range(1, num_labels):
         x = stats[i, cv2.CC_STAT_LEFT]
         y = stats[i, cv2.CC_STAT_TOP]
@@ -125,12 +125,7 @@ def locate_lines_in_image_mask(
             continue
 
         rect = Rectangle.of_xywh(x, y, w, h)
-        inner_rect = rect.expand((0, -3))
-
-        density = thresh[inner_rect.top:inner_rect.bottom, inner_rect.left:inner_rect.right].sum() \
-                  / inner_rect.height / inner_rect.width
-        if density < line_output_density_threshold:
-            continue
+        rect = rect.expand(line_padding)
         output_rects.append(rect)
 
     return output_rects
@@ -168,7 +163,7 @@ def _paragraph_align_center(paragraph_rect: Rectangle, line_rect: Rectangle, x_m
 
 if __name__ == '__main__':
     from manga_ocr.models.localization.conv_unet.conv_unet import ConvUnet
-    from manga_ocr.utils import image_with_annotations
+    from manga_ocr.utils import image_with_annotations, concatenated_images
     from manga_ocr.utils.files import load_image, get_path_project_dir
 
     path_output_model = get_path_project_dir('data/output/models/localization.bin')
@@ -185,12 +180,13 @@ if __name__ == '__main__':
     paragraphs = model.locate_paragraphs(example)
 
     paragraph_locations = [rect for rect, _ in paragraphs]
-    image_with_annotations(example, paragraph_locations).show()
+    line_locations = [l for _, lines in paragraphs for l in lines]
+    output_char, output_line = model.create_output_marks(example)
 
-    lines = [l for _, lines in paragraphs for l in lines]
-    image_with_annotations(example, lines).show()
+    concatenated_images([
+        example,
+        output_char,
+        output_line,
+        image_with_annotations(example, line_locations),
+    ], num_col=4).show()
 
-    output_char, output_line, output_paragraph = model.create_output_marks(example)
-    output_char.show()
-    output_line.show()
-    output_paragraph.show()
