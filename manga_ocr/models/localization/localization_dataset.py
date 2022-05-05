@@ -115,13 +115,13 @@ class LocalizationDataset(torch.utils.data.Dataset):
 
         images = dataset_a.images + dataset_b.images
         output_masks_char = dataset_a.output_masks_char + dataset_b.output_masks_char \
-            if dataset_b.output_masks_char and dataset_b.output_masks_char else None
+            if dataset_a.output_masks_char and dataset_b.output_masks_char else None
         output_masks_line = dataset_a.output_masks_line + dataset_b.output_masks_line \
-            if dataset_b.output_masks_line and dataset_b.output_masks_line else None
+            if dataset_a.output_masks_line and dataset_b.output_masks_line else None
         output_masks_paragraph = dataset_a.output_masks_paragraph + dataset_b.output_masks_paragraph \
-            if dataset_b.output_masks_paragraph and dataset_b.output_masks_paragraph else None
+            if dataset_a.output_masks_paragraph and dataset_b.output_masks_paragraph else None
         output_locations_lines = dataset_a.output_locations_lines + dataset_b.output_locations_lines \
-            if dataset_b.output_locations_lines and dataset_b.output_locations_lines else None
+            if dataset_a.output_locations_lines and dataset_b.output_locations_lines else None
 
         return LocalizationDataset(
             images=images,
