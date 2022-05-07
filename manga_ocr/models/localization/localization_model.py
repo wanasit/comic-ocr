@@ -1,17 +1,19 @@
-import os
-from typing import Callable, Tuple, Union, List
+"""The module provides abstract/shared functionalities for ML model for localization
+"""
 
-import cv2
-import numpy as np
+import os
+from typing import Callable, Tuple, List
+
 import torch
 from PIL import Image
 from torch import nn, Tensor
 
+from manga_ocr.models.localization import localization_open_cv as cv
 from manga_ocr.models.localization.localization_utils import image_to_input_tensor, output_tensor_to_image_mask
 from manga_ocr.typing import Size, Rectangle
 
-DEFAULT_LOSS_CRITERION_CHAR = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([1]))
-DEFAULT_LOSS_CRITERION_LINE = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([0.2]))
+DEFAULT_LOSS_CRITERION_CHAR = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([2]))
+DEFAULT_LOSS_CRITERION_LINE = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([0.5]))
 
 
 class LocalizationModel(nn.Module):
@@ -65,102 +67,24 @@ class LocalizationModel(nn.Module):
         return loss
 
     def locate_paragraphs(self, image) -> List[Tuple[Rectangle, List[Rectangle]]]:
-        lines = self.locate_lines(image)
-        return group_lines_into_paragraphs(lines)
+        output, _ = self._create_output_mask(image)
+        return cv.locate_paragraphs_in_character_mask(output)
 
     def locate_lines(self, image) -> List[Rectangle]:
-        with torch.no_grad():
-            input_tensor = image_to_input_tensor(image).unsqueeze(0)
-            _, output = self(input_tensor)
-            output = torch.sigmoid(output[0])
-
-        return locate_lines_in_image_mask(output)
+        output, _ = self._create_output_mask(image)
+        return cv.locate_lines_in_character_mask(output)
 
     def create_output_marks(self, image) -> Tuple[Image.Image, Image.Image]:
+        output_char, output_line = self._create_output_mask(image)
+
+        return output_tensor_to_image_mask(output_char), output_tensor_to_image_mask(output_line)
+
+    def _create_output_mask(self, image) -> Tuple[Tensor, Tensor]:
         with torch.no_grad():
             input_tensor = image_to_input_tensor(image).unsqueeze(0)
             output_char, output_line = self(input_tensor)
 
-            output_char = torch.sigmoid(output_char[0])
-            output_line = torch.sigmoid(output_line[0])
-
-        return output_tensor_to_image_mask(output_char), \
-               output_tensor_to_image_mask(output_line)
-
-
-def locate_lines_in_image_mask(
-        output_tensor: Union[np.ndarray, Tensor],
-        output_threshold: float = 0.95,
-        line_output_min_size: Size = Size.of(10, 10),
-        line_padding: Tuple[int, int] = (2, 1),
-        debugging=True
-) -> List[Rectangle]:
-    """Locate the line locations in the output tensor or array
-
-    Args:
-        output_tensor (np.ndarray, torch.Tensor): the prediction output tensor or array with shape and value similar to
-            the tensor returned by `image_mask_to_output_tensor()`
-        output_threshold (float)
-        line_output_density_threshold (float)
-        line_output_min_size (Size, Tuple[float, float])
-    Returns:
-        List[Rectangle]: the line locations
-    """
-    if isinstance(output_tensor, Tensor):
-        output_tensor = output_tensor.numpy()
-
-    if len(output_tensor.shape) == 3:
-        output_tensor = output_tensor.mean(axis=0)
-
-    _, thresh = cv2.threshold(output_tensor, output_threshold, 1, cv2.THRESH_BINARY)
-    # _debug_show_output(True, thresh)
-
-    output_rects = []
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(thresh.astype(np.uint8), connectivity=4)
-    for i in range(1, num_labels):
-        x = stats[i, cv2.CC_STAT_LEFT]
-        y = stats[i, cv2.CC_STAT_TOP]
-        w = stats[i, cv2.CC_STAT_WIDTH]
-        h = stats[i, cv2.CC_STAT_HEIGHT]
-
-        if w <= line_output_min_size[0] or h <= line_output_min_size[1]:
-            continue
-
-        rect = Rectangle.of_xywh(x, y, w, h)
-        rect = rect.expand(line_padding)
-        output_rects.append(rect)
-
-    return output_rects
-
-
-def group_lines_into_paragraphs(lines: List[Rectangle]) -> List[Tuple[Rectangle, List[Rectangle]]]:
-    paragraphs: List[Tuple[Rectangle, List[Rectangle]]] = []
-    for line in lines:
-        for i in range(len(paragraphs)):
-            paragraph_rect, paragraph_lines = paragraphs[i]
-
-            if _paragraph_align_left(paragraph_rect, line) or _paragraph_align_center(paragraph_rect, line):
-                new_paragraph_rect = Rectangle.union_bounding_rect((paragraph_rect, line))
-                paragraphs[i] = (new_paragraph_rect, paragraph_lines + [line])
-                break
-        else:
-            paragraphs.append((line, [line]))
-
-    return paragraphs
-
-
-def _paragraph_align_left(paragraph_rect: Rectangle, line_rect: Rectangle, x_margin=5, y_min_margin=10):
-    y_margin = max(line_rect.height / 5, y_min_margin)
-
-    return abs(paragraph_rect.left - line_rect.left) < x_margin and \
-           abs(paragraph_rect.bottom - line_rect.top) < y_margin
-
-
-def _paragraph_align_center(paragraph_rect: Rectangle, line_rect: Rectangle, x_margin=10, y_min_margin=10):
-    y_margin = max(line_rect.height / 5, y_min_margin)
-
-    return abs(paragraph_rect.center[0] - line_rect.center[0]) < x_margin and \
-           abs(paragraph_rect.bottom - line_rect.top) < y_margin
+        return torch.sigmoid(output_char[0]), torch.sigmoid(output_line[0])
 
 
 if __name__ == '__main__':
@@ -168,7 +92,7 @@ if __name__ == '__main__':
     from manga_ocr.utils import image_with_annotations, concatenated_images
     from manga_ocr.utils.files import load_image, get_path_project_dir
 
-    path_output_model = get_path_project_dir('data/output/models/localization3.bin')
+    path_output_model = get_path_project_dir('data/output/models/localization.bin')
 
     if os.path.exists(path_output_model):
         print('Loading an existing model...')
@@ -178,16 +102,19 @@ if __name__ == '__main__':
         model = ConvUnet()
 
     # example = load_image(get_path_project_dir('example/manga_generated/image/0001.jpg'))
-    example = load_image(get_path_project_dir('example/manga_annotated/normal_02.jpg'))
-    paragraphs = model.locate_paragraphs(example)
+    example = load_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))
+    # example = load_image(get_path_project_dir('data/manga_line_annotated/u_01.jpg'))
 
-    paragraph_locations = [rect for rect, _ in paragraphs]
-    line_locations = [l for _, lines in paragraphs for l in lines]
-    output_char, output_line = model.create_output_marks(example)
+    # paragraphs = model.locate_paragraphs(example)
+    #
+    # paragraph_locations = [rect for rect, _ in paragraphs]
+    # line_locations = [l for _, lines in paragraphs for l in lines]
+    line_locations = model.locate_lines(example)
+    output_mask_char, output_mask_line = model.create_output_marks(example)
 
     concatenated_images([
         example,
-        output_char,
-        output_line,
+        output_mask_char,
+        output_mask_line,
         image_with_annotations(example, line_locations),
     ], num_col=4).show()

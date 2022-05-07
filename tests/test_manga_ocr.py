@@ -13,9 +13,9 @@ def test_localize_paragraphs():
 
     paragraph_locations = [l for l, _ in paragraphs]
     # image_with_annotations(image, paragraph_locations).show()
-    assert paragraph_locations[0].close_to(Rectangle.of_size((87, 16), at=(309, 459)), threshold=0.8)
-    assert paragraph_locations[1].close_to(Rectangle.of_size((95, 20), at=(333, 715)), threshold=0.8)
-    assert paragraph_locations[2].close_to(Rectangle.of_size((108, 28), at=(473, 945)), threshold=0.8)
+    assert paragraph_locations[0].can_represent(Rectangle.of_size((87, 16), at=(309, 459)))
+    assert paragraph_locations[1].can_represent(Rectangle.of_size((95, 20), at=(333, 715)))
+    assert paragraph_locations[2].can_represent(Rectangle.of_size((108, 28), at=(473, 945)))
 
 
 def test_locate_lines():
@@ -26,7 +26,7 @@ def test_locate_lines():
 
     line_locations = sorted(line_locations, key=lambda l: l.top)
 
-    assert line_locations[0].close_to(Rectangle.of_size((87, 16), at=(309, 459)), threshold=0.7)
-    assert line_locations[1].close_to(Rectangle.of_size((95, 20), at=(333, 715)), threshold=0.7)
-    assert line_locations[2].close_to(Rectangle.of_size((42, 14), at=(506, 945)), threshold=0.7)
-    assert line_locations[3].close_to(Rectangle.of_size((108, 12), at=(473, 961)), threshold=0.7)
+    assert line_locations[0].can_represent(Rectangle.of_size((87, 16), at=(309, 459)))
+    assert line_locations[1].can_represent(Rectangle.of_size((95, 20), at=(333, 715)))
+    assert line_locations[2].can_represent(Rectangle.of_size((42, 14), at=(506, 945)))
+    assert line_locations[3].can_represent(Rectangle.of_size((108, 12), at=(473, 961)))

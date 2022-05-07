@@ -1,15 +1,17 @@
 """A module for localization problem (aka. locating text inside image)
 
-This top-level module provide shortcut APIs for working with the LocalizationModel
+This top-level module provide shortcut and high-level APIs for working with the LocalizationModel and its dependencies
+or implementation details (both Pytorch/ML or OpenCV).
 
 """
 import logging
+from typing import Iterable
 
 import torch
 
+from manga_ocr.typing import Rectangle
 from manga_ocr.models.localization.localization_model import LocalizationModel
 from manga_ocr.models.localization.localization_dataset import LocalizationDataset
-from manga_ocr.models.localization.localization_utils import match_locations_with_baseline
 from manga_ocr.utils.files import PathLike, get_path_project_dir, load_image
 
 DEFAULT_TRAINED_MODEL_FILE = get_path_project_dir('trained_models/localization.bin')
@@ -61,7 +63,7 @@ def calculate_high_level_metrics(
     for i in range(len(dataset)):
         baseline_line_locations = dataset.get_line_locations(i)
         line_locations = model.locate_lines(dataset.get_image(i))
-        tp, fp, fn = match_locations_with_baseline(line_locations, baseline_line_locations)
+        tp, fp, fn = match_location_rectangles_with_baseline(line_locations, baseline_line_locations)
         tp, fp, fn = len(tp), len(fp), len(fn)
         total_tp += tp
         total_fp += fp
@@ -75,3 +77,19 @@ def calculate_high_level_metrics(
         "line_level_precision": total_tp / (total_tp + total_fp),
         "line_level_recall": total_tp / (total_tp + total_fn)
     }
+
+
+def match_location_rectangles_with_baseline(locations: Iterable[Rectangle], baseline_locations: Iterable[Rectangle]):
+    matched_pairs = []
+    unmatched_locations = []
+
+    for location in locations:
+        for i, baseline_location in enumerate(baseline_locations):
+            if location.can_represent(baseline_location):
+                matched_pairs.append((location, baseline_location))
+                baseline_locations = baseline_locations[:i] + baseline_locations[i + 1:]
+                break
+        else:
+            unmatched_locations.append(location)
+
+    return matched_pairs, unmatched_locations, baseline_locations

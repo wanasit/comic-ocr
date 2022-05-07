@@ -47,34 +47,15 @@ def output_tensor_to_image_mask(tensor_or_array: Union[torch.Tensor, np.ndarray]
     return Image.fromarray(np.uint8(array * 255), 'L').convert('RGB')
 
 
-def match_locations_with_baseline(locations: Iterable[Rectangle], baseline_locations: Iterable[Rectangle]):
-    """Divide the rectangle or size into smaller tiles of the target size.
+def align_line_horizontal(block_a: Rectangle, block_b: Rectangle, x_min_margin=10, y_margin=2):
+    if block_b.left < block_a.left:
+        block_a, block_b = block_b, block_a
 
-    This function overlaps the tile contents. This duplication is expected because we want to minimize information loss
-    when train the model on divided images. The minimum overlap can be controlled by parameter.
+    x_margin = max(block_a.height, block_b.height, x_min_margin)
+    return (block_a.top - y_margin) <= block_b.center.y <= (block_a.bottom + y_margin) and \
+           (abs(block_a.left - block_b.left) - block_a.width) < x_margin
 
-    Args:
-        locations (Iterable[Rectangle]) the output or the predicted locations.
-        baseline_locations (Iterable[Rectangle]) the baseline locations.
 
-    Returns:
-        matched_pairs (List[Rectangle, Rectangle]) the pairs of location and its matched baseline location
-        unmatched_locations (List[Rectangle]) the locations where there is no match
-        unmatched_baseline_locations (List[Rectangle]) the baseline locations where there is no match
-    """
-    matched_pairs = []
-    unmatched_locations = []
-
-    for location in locations:
-        for i, baseline_location in enumerate(baseline_locations):
-            if location.close_to(baseline_location):
-                matched_pairs.append((location, baseline_location))
-                baseline_locations = baseline_locations[:i] + baseline_locations[i + 1:]
-                break
-        else:
-            unmatched_locations.append(location)
-
-    return matched_pairs, unmatched_locations, baseline_locations
 
 
 def divine_rect_into_overlapping_tiles(

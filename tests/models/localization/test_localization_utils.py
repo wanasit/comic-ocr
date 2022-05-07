@@ -1,6 +1,20 @@
 from manga_ocr import Rectangle
-from manga_ocr.models.localization.localization_utils import divine_rect_into_overlapping_tiles
+from manga_ocr.models.localization.localization_utils import divine_rect_into_overlapping_tiles, align_line_horizontal
 from manga_ocr.typing import Size
+
+
+def test_align_line_horizontal_on_good_align():
+    x = Rectangle.of_size(size=(55, 15), at=(520, 690))
+    y = Rectangle.of_size(size=(12, 15), at=(580, 690))
+    assert align_line_horizontal(x, y)
+    assert align_line_horizontal(y, x)
+
+
+def test_align_line_horizontal_on_overlap_horizontal():
+    x = Rectangle.of_size(size=(61, 15), at=(521, 690))
+    y = Rectangle.of_size(size=(12, 16), at=(580, 689))
+    assert align_line_horizontal(x, y)
+    assert align_line_horizontal(y, x)
 
 
 def test_divine_rect_into_overlapping_tiles():

@@ -75,7 +75,7 @@ class Rectangle(tuple):
         return Rectangle([tl[0], tl[1], br[0], br[1]])
 
     @staticmethod
-    def intersect_bounding_rect(rectangles: Iterable[Rectangle]):
+    def intersect_bounding_rect(rectangles: Iterable[RectangleLike]):
         top, left, bottom, right = -float('inf'), -float('inf'), float('inf'), float('inf')
         for rect in rectangles:
             top, left = max(top, rect[1]), max(left, rect[0])
@@ -89,13 +89,12 @@ class Rectangle(tuple):
             br=(right, bottom)
         )
 
-
     @staticmethod
-    def union_bounding_rect(rectangles: Iterable[Rectangle]):
+    def union_bounding_rect(rectangles: Iterable[RectangleLike]):
         top, left, bottom, right = float('inf'), float('inf'), -float('inf'), -float('inf')
         for rect in rectangles:
-            top, left = min(top, rect.top), min(left, rect.left)
-            bottom, right = max(bottom, rect.bottom), max(right, rect.right)
+            top, left = min(top, rect[1]), min(left, rect[0])
+            bottom, right = max(bottom, rect[3]), max(right, rect[2])
 
         return Rectangle.of_tl_br(
             tl=(left, top),
@@ -180,6 +179,15 @@ class Rectangle(tuple):
         similarity = Rectangle.jaccard_similarity(self, rect)
         return similarity >= threshold
 
+    def can_represent(self, rect: RectangleLike, threshold_precision=0.7, threshold_recall=0.9) -> bool:
+        intersect_rect = Rectangle.intersect_bounding_rect((self, rect))
+        if not intersect_rect:
+            return False
+
+        volume_precision = intersect_rect.size.value / self.size.value
+        volume_recall = intersect_rect.size.value / rect.size.value
+        return volume_precision >= threshold_precision and volume_recall >= threshold_recall
+
     def __contains__(self, item: Union[RectangleLike, PointLike]) -> bool:
 
         if isinstance(item, tuple) or isinstance(item, list):
@@ -193,7 +201,7 @@ class Rectangle(tuple):
 
         return tuple.__contains__(self, item)
 
-    def __repr__ (self):
+    def __repr__(self):
         return f'Rect(size={self.width, self.height}, at={self[0], self[1]} )'
 
 
