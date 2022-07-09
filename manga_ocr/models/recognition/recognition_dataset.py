@@ -10,6 +10,7 @@ import manga_ocr.dataset.generated_manga as generated_manga
 
 from manga_ocr.models.recognition import encode
 from manga_ocr.models.recognition.recognition_model import image_to_single_input_tensor, DEFAULT_INPUT_HEIGHT
+from manga_ocr.typing import Rectangle
 
 
 class RecognitionDataset(Dataset):
@@ -58,16 +59,22 @@ class RecognitionDataset(Dataset):
     def load_annotated_dataset(
             directory: str,
             input_height: int = DEFAULT_INPUT_HEIGHT,
+            random_padding_x: Union[int, Tuple[int, int]] = (0, 10),
+            random_padding_y: Union[int, Tuple[int, int]] = (0, 5),
+            random_padding_copy_count: int = 1,
+            random_seed: any = ''
     ):
+        random = Random(random_seed)
         images, image_texts = annotated_manga.load_line_annotated_dataset(directory)
 
         line_images = []
         line_texts = []
         for image, lines in zip(images, image_texts):
-
             for line in lines:
-                line_images.append(image.crop(line.location))
-                line_texts.append(line.text)
+                for padding_copy_i in range(random_padding_copy_count):
+                    rect = _rect_with_random_padding(random, line.location, random_padding_x, random_padding_y)
+                    line_images.append(image.crop(rect))
+                    line_texts.append(line.text)
 
         return RecognitionDataset(
             line_images=line_images,
@@ -84,12 +91,7 @@ class RecognitionDataset(Dataset):
             random_padding_copy_count: int = 1,
             random_seed: any = ''
     ):
-        random_padding_x = (random_padding_x, random_padding_x) \
-            if isinstance(random_padding_x, int) else random_padding_x
-        random_padding_y = (random_padding_y, random_padding_y) \
-            if isinstance(random_padding_y, int) else random_padding_y
         random = Random(random_seed)
-
         images, image_texts, _ = generated_manga.load_dataset(directory)
 
         line_images = []
@@ -98,11 +100,7 @@ class RecognitionDataset(Dataset):
         for image, lines in zip(images, image_texts):
             for line in lines:
                 for padding_copy_i in range(random_padding_copy_count):
-
-                    padding_x = random.randint(random_padding_x[0], random_padding_x[1])
-                    padding_y = random.randint(random_padding_y[0], random_padding_y[1])
-                    rect = line.location.expand((padding_x, padding_y))
-
+                    rect = _rect_with_random_padding(random, line.location, random_padding_x, random_padding_y)
                     line_images.append(image.crop(rect))
                     line_texts.append(line.text)
 
@@ -112,6 +110,19 @@ class RecognitionDataset(Dataset):
             input_height=input_height
         )
 
+
+def _rect_with_random_padding(
+        random: Random,
+        rect: Rectangle,
+        random_padding_x: Union[int, Tuple[int, int]],
+        random_padding_y: Union[int, Tuple[int, int]],
+):
+    random_padding_x = (random_padding_x, random_padding_x) if isinstance(random_padding_x, int) else random_padding_x
+    random_padding_y = (random_padding_y, random_padding_y) if isinstance(random_padding_y, int) else random_padding_y
+
+    padding_x = random.randint(random_padding_x[0], random_padding_x[1]) if random_padding_x else 0
+    padding_y = random.randint(random_padding_y[0], random_padding_y[1]) if random_padding_y else 0
+    return rect.expand((padding_x, padding_y))
 
 if __name__ == '__main__':
     from manga_ocr.utils import get_path_project_dir

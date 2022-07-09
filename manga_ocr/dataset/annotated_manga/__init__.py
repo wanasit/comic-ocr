@@ -26,6 +26,7 @@ def load_line_annotated_dataset(
 
     Args:
         dataset_dir (Str, Path): path to the dataset directory
+        include_empty_text (bool): should include the annotation without text or empty text
 
     Returns:
         images (List[Image])
