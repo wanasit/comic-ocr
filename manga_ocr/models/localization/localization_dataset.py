@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import random
+from random import Random
 from typing import List, Optional
 
 import torch
@@ -87,8 +87,9 @@ class LocalizationDataset(torch.utils.data.Dataset):
             self.output_locations_lines[from_idx:to_dix] if self.output_locations_lines else None
         )
 
-    def shuffle(self) -> LocalizationDataset:
+    def shuffle(self, random_seed: any = '') -> LocalizationDataset:
         indexes = list(range(len(self.images)))
+        random = Random(random_seed)
         random.shuffle(indexes)
 
         images = [self.images[i] for i in indexes]
@@ -109,7 +110,7 @@ class LocalizationDataset(torch.utils.data.Dataset):
             output_locations_lines=output_location_lines)
 
     @staticmethod
-    def merge(dataset_a: LocalizationDataset, dataset_b: LocalizationDataset, shuffle=True):
+    def merge(dataset_a: LocalizationDataset, dataset_b: LocalizationDataset):
         assert dataset_a.get_image_size() == dataset_b.get_image_size(), \
             'Can only merge dataset with the same image size. TODO: add this later'
 

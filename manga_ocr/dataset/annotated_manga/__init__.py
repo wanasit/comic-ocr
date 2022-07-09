@@ -20,7 +20,8 @@ from manga_ocr.utils.nb_annotation import lines_from_nb_annotation_data
 
 def load_line_annotated_dataset(
         dataset_dir: str,
-        include_empty_text: bool = False
+        include_empty_text: bool = False,
+        skip_empty_check: bool = False
 ) -> Tuple[List[Image], List[List[Line]]]:
     """Load dataset with annotation-per text line
 
@@ -33,6 +34,7 @@ def load_line_annotated_dataset(
         image_texts (List[List[Line]])
     """
     images, _, image_annotations = load_images_with_annotation(dataset_dir + '/*.jpg')
+    assert skip_empty_check or len(images) > 0
     image_texts = []
     for image, annotation_data in zip(images, image_annotations):
         if not annotation_data:
@@ -43,3 +45,8 @@ def load_line_annotated_dataset(
         image_texts.append(lines)
 
     return images, image_texts
+
+if __name__ == '__main__':
+    from manga_ocr.utils.files import get_path_project_dir
+    images, lines = load_line_annotated_dataset(get_path_project_dir('data/manga_line_annotated'))
+    print(len(images), len(lines))
