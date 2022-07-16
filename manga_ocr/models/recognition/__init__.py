@@ -1,39 +1,80 @@
+"""A module for text recognition (aka. reading character sequence from text image)
+
+"""
+
+import logging
 from typing import Optional, List
 
-CHAR_ID_PADDING = 0
-CHAR_ID_UNKNOWN = 1
-SUPPORT_CHARACTERS = ' 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!?"#$%&\'’()*+,-.'
-SUPPORT_DICT_SIZE = len(SUPPORT_CHARACTERS) + 2
-CHAR_TO_ID = {c: i + 2 for i, c in enumerate(SUPPORT_CHARACTERS)}
-ID_TO_CHAR = {i + 2: c for i, c in enumerate(SUPPORT_CHARACTERS)}
+import torch
+
+from manga_ocr.models.recognition.encoding import encode, decode
+from manga_ocr.models.recognition.recognition_model import RecognitionModel, SUPPORT_DICT_SIZE
+from manga_ocr.models.recognition.recognition_dataset import RecognitionDataset
+from manga_ocr.utils.files import PathLike, get_path_project_dir
+
+DEFAULT_TRAINED_MODEL_FILE = get_path_project_dir('trained_models/recognition.bin')
+
+logger = logging.getLogger(__name__)
 
 
-def encode(text: str, padded_output_size: Optional[int] = None) -> List[int]:
-    encoded = [CHAR_TO_ID[c] if c in CHAR_TO_ID else CHAR_ID_UNKNOWN for c in text]
-    if padded_output_size and len(encoded) < padded_output_size:
-        encoded = encoded + [0] * (padded_output_size - len(encoded))
+def load_or_create_new_model(model_file: PathLike = DEFAULT_TRAINED_MODEL_FILE) -> RecognitionModel:
+    try:
+        model = load_model(model_file)
+        model()
+    except:
+        logger.info(f'Fail loading model at [{model_file}]. Creating a new model.')
 
-    return encoded
+    return create_new_model()
 
 
-def decode(prediction: List[int], unknown_char='?') -> str:
-    predicted_id_chunks = [[]]
-    for id in prediction:
-        if id == 0:
-            predicted_id_chunks.append([])
-            continue
+def create_new_model(**kwargs) -> RecognitionModel:
+    from manga_ocr.models.recognition.crnn.crnn import CRNN
+    return CRNN(**kwargs)
 
-        if predicted_id_chunks[-1] and predicted_id_chunks[-1][-1] == id:
-            continue
 
-        predicted_id_chunks[-1].append(id)
+def load_model(
+        model_file: PathLike = DEFAULT_TRAINED_MODEL_FILE,
+        test_executing_model: bool = True
+) -> RecognitionModel:
+    logger.info(f'Loading localization model [{model_file}]')
+    model: RecognitionModel = torch.load(model_file)
 
-    text = ''
-    for chunk in predicted_id_chunks:
-        for id in chunk:
-            if id in ID_TO_CHAR:
-                text += ID_TO_CHAR[id]
-            else:
-                text += unknown_char
+    if test_executing_model:
+        # TODO: test the model here
+        pass
 
-    return text
+    return model
+
+
+def calculate_high_level_metrics(
+        model: RecognitionModel,
+        dataset: RecognitionDataset
+):
+    assert len(dataset) > 0
+    perfect_match_count = 0
+
+    for i in range(len(dataset)):
+        line_text_expected = dataset.get_line_text(i)
+        line_text_image = dataset.get_line_image(i)
+
+        line_text_actual = model.recognize(line_text_image)
+
+        if line_text_actual == line_text_expected:
+            perfect_match_count += 1
+
+    return {
+        "dataset_size": len(dataset),
+        "perfect_match_count": perfect_match_count,
+        "perfect_match_accuracy": perfect_match_count / len(dataset),
+    }
+
+
+if __name__ == '__main__':
+    from manga_ocr.utils import get_path_project_dir
+
+    dataset_dir = get_path_project_dir('example/manga_annotated')
+    model = load_model()
+    dataset = RecognitionDataset.load_annotated_dataset(dataset_dir)
+
+    for i in range(len(dataset)):
+        print(dataset.get_line_text(i), model.recognize(dataset.get_line_image(i)))

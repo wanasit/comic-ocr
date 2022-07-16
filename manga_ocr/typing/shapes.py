@@ -202,7 +202,7 @@ class Rectangle(tuple):
         return tuple.__contains__(self, item)
 
     def __repr__(self):
-        return f'Rect(size={self.width, self.height}, at={self[0], self[1]} )'
+        return f'Rect(size={self.width, self.height}, at={self[0], self[1]})'
 
 
 PointLike = Union[

@@ -18,6 +18,25 @@ def test_localize_paragraphs():
     assert paragraph_locations[2].can_represent(Rectangle.of_size((108, 28), at=(473, 945)))
 
 
+def test_read_paragraphs():
+    image = load_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))
+    paragraphs = manga_ocr.read_paragraphs(image)
+    # image_with_annotations(image, line_locations).show()
+    assert len(paragraphs) == 3
+
+    paragraph_locations = [p.location for p in paragraphs]
+    # image_with_annotations(image, paragraphs).show()
+    assert paragraph_locations[0].can_represent(Rectangle.of_size((87, 16), at=(309, 459)))
+    assert paragraph_locations[1].can_represent(Rectangle.of_size((95, 20), at=(333, 715)))
+    assert paragraph_locations[2].can_represent(Rectangle.of_size((108, 28), at=(473, 945)))
+
+    paragraph_texts = [p.text for p in paragraphs]
+    # image_with_annotations(image, paragraphs).show()
+    assert paragraph_texts[0] == 'DEPRESSION'
+    # assert paragraph_texts[1] == 'ACCEPTANCE' todo: fix this
+    # assert paragraph_texts[2] == '??'
+
+
 def test_locate_lines():
     image = load_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))
     line_locations = manga_ocr.localize_lines(image)
@@ -30,3 +49,21 @@ def test_locate_lines():
     assert line_locations[1].can_represent(Rectangle.of_size((95, 20), at=(333, 715)))
     assert line_locations[2].can_represent(Rectangle.of_size((42, 14), at=(506, 945)))
     assert line_locations[3].can_represent(Rectangle.of_size((108, 12), at=(473, 961)))
+
+
+def test_read_lines():
+    image = load_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))
+    lines = manga_ocr.read_lines(image)
+    # image_with_annotations(image, line_locations).show()
+    assert len(lines) == 4
+
+    lines = sorted(lines, key=lambda l: l.location.top)
+
+    assert lines[0].location.can_represent(Rectangle.of_size((87, 16), at=(309, 459)))
+    assert lines[1].location.can_represent(Rectangle.of_size((95, 20), at=(333, 715)))
+    assert lines[2].location.can_represent(Rectangle.of_size((42, 14), at=(506, 945)))
+    assert lines[3].location.can_represent(Rectangle.of_size((108, 12), at=(473, 961)))
+
+    assert lines[0].text == 'DEPRESSION'
+    # assert lines[1].text == 'ACCEPTANCE'
+   

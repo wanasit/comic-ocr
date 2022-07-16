@@ -10,7 +10,7 @@ def concatenated_images(
         images: List[Image.Image],
         num_col: int = 3,
         padding: int = 3,
-        background: Color='#ffffff',
+        background: Color = '#ffffff',
 ):
     img_width = max(i.width for i in images)
     img_height = max(i.height for i in images)
@@ -35,6 +35,8 @@ def image_with_annotations(
         annotation_fill: str = '#44ff2288',
         annotation_text_fill: str = '#00bb00ff',
         annotation_text_font: ImageFont.ImageFont = ImageFont.load_default(),
+        annotation_text_br_offset_x: int = 0,
+        annotation_text_br_offset_y: int = 0,
 ):
     image = image.copy()
     draw = ImageDraw.Draw(image, 'RGBA')
@@ -43,7 +45,9 @@ def image_with_annotations(
         text = annotation.text if hasattr(annotation, 'text') else ''
 
         draw.rectangle(location, fill=annotation_fill)
-        draw.text(location.br, text, annotation_text_fill, font=annotation_text_font)
+        draw.text(
+            location.br.move(annotation_text_br_offset_x, annotation_text_br_offset_y),
+            text, annotation_text_fill, font=annotation_text_font)
 
     return image
 

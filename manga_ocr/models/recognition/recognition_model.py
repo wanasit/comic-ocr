@@ -1,12 +1,12 @@
 import os
-from typing import Union
+from typing import Union, List, Optional
 
 import torch
 from torch import nn
 from torchvision import transforms
 from PIL.Image import Image
 
-from manga_ocr.models.recognition import SUPPORT_DICT_SIZE, decode
+from manga_ocr.models.recognition.encoding import SUPPORT_DICT_SIZE, decode
 
 TRANSFORM_TO_TENSOR = transforms.ToTensor()
 TRANSFORM_TO_GRAY_SCALE = transforms.Grayscale()
@@ -53,7 +53,7 @@ def compute_ctc_loss(
     return loss_func(ctc_input, expected_output, ctc_input_length, expected_output_length)
 
 
-class TextRecognizeModel(nn.Module):
+class RecognitionModel(nn.Module):
     r"""
     An abstract for Text-Recognition Module following the framework mentioned in deep-text-recognition-benchmark
     https://github.com/clovaai/deep-text-recognition-benchmark

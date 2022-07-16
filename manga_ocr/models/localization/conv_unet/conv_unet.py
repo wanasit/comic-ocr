@@ -103,11 +103,12 @@ class DoubleConvWithSecondInput(nn.Module):
 if __name__ == '__main__':
     from torchvision import models
     from torchvision.models.vgg import model_urls
-
+    from manga_ocr.utils.pytorch_model import get_total_parameters_count
     module_path = os.path.dirname(__file__)
     input_images = load_images(module_path + "/../../../out/generate/input/*.jpg")
     output_images = load_images(module_path + "/../../../out/generate/output/*.jpg")
 
     model = ConvUnet()
+    print(get_total_parameters_count(model))
     # input = model.image_to_input(input_images[0]).unsqueeze(0)
     # output_char, output_mask = model(input)

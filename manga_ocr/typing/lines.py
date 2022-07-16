@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 from manga_ocr.typing import Rectangle, RectangleLike
+
 
 class Line(tuple):
 
     def __new__(cls, located_line: Tuple[str, RectangleLike]):
+        assert len(located_line) >= 2
         return tuple.__new__(Line, (located_line[0], Rectangle(located_line[1])))
 
     @staticmethod
@@ -23,18 +25,25 @@ class Line(tuple):
         return self[1]
 
 
-class Paragraph(tuple):
-    def __new__(cls, lines: Union[Tuple[Line], List[Line]]):
-        return tuple.__new__(Line, lines)
-
-    @staticmethod
-    def of(lines: Union[Tuple[Tuple], List[Tuple]]) -> Paragraph:
-        return Paragraph([Line(line) for line in lines])
+class Paragraph:
+    def __init__(self,
+                 lines: Union[Tuple[Line], List[Line]],
+                 location: Optional[Rectangle] = None
+                 ):
+        self._lines = lines
+        self._location = location if location else Rectangle.union_bounding_rect([l.location for l in lines])
 
     @property
-    def lines(self) -> Tuple[Line]:
-        return self
+    def location(self) -> Rectangle:
+        return self._location
+
+    @property
+    def lines(self) -> List[Line]:
+        return self._lines
 
     @property
     def text(self) -> str:
-        return self[0]
+        return ' '.join((l.text for l in self._lines))
+
+    def __repr__(self):
+        return f'Paragraph("{self.text}", at={self._location})'
