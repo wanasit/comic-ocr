@@ -1,2 +1,2 @@
-# Manga OCR
-An OCR system fine-tuned for Japanese comics
+# Comic OCR
+An OCR system fine-tuned for comics and manga

@@ -1,9 +1,9 @@
 from torch.utils.data import DataLoader
 
-from manga_ocr.models.recognition import encode
-from manga_ocr.models.recognition.recognition_dataset import RecognitionDataset
-from manga_ocr.models.recognition.recognition_model import DEFAULT_INPUT_HEIGHT
-from manga_ocr.utils.files import get_path_example_dir
+from comic_ocr.models.recognition import encode
+from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset
+from comic_ocr.models.recognition.recognition_model import DEFAULT_INPUT_HEIGHT
+from comic_ocr.utils.files import get_path_example_dir
 
 
 def test_loading_annotated_dataset():

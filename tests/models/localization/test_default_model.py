@@ -1,9 +1,9 @@
 from torch.utils.data import DataLoader
 
-from manga_ocr.models import localization
-from manga_ocr.models.localization import LocalizationDataset
-from manga_ocr.typing import Size
-from manga_ocr.utils.files import get_path_example_dir
+from comic_ocr.models import localization
+from comic_ocr.models.localization import LocalizationDataset
+from comic_ocr.typing import Size
+from comic_ocr.utils.files import get_path_example_dir
 
 
 def test_default_model_high_level_metrics():

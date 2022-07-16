@@ -1,4 +1,4 @@
-from manga_ocr.typing import Line, Paragraph, Rectangle
+from comic_ocr.typing import Line, Paragraph, Rectangle
 
 
 def test_line_basic():

@@ -1,6 +1,6 @@
-from manga_ocr.models import recognition
-from manga_ocr.models.recognition import RecognitionDataset
-from manga_ocr.utils.files import get_path_example_dir
+from comic_ocr.models import recognition
+from comic_ocr.models.recognition import RecognitionDataset
+from comic_ocr.utils.files import get_path_example_dir
 
 
 def test_default_model_high_level_metrics():

@@ -2,11 +2,11 @@ import numpy as np
 from PIL import ImageFont
 from PIL import Image
 
-import manga_ocr.dataset.generated_manga as generated_manga
-from manga_ocr import Rectangle
-from manga_ocr.dataset.generated_manga.text_area import TextArea
-from manga_ocr.typing import Point
-from manga_ocr.utils.files import get_path_example_dir
+import comic_ocr.dataset.generated_manga as generated_manga
+from comic_ocr import Rectangle
+from comic_ocr.dataset.generated_manga.text_area import TextArea
+from comic_ocr.typing import Point
+from comic_ocr.utils.files import get_path_example_dir
 
 
 def test_text_area():

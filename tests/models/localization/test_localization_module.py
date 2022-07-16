@@ -1,7 +1,7 @@
-from manga_ocr.dataset import generated_manga
-from manga_ocr.utils.files import get_path_example_dir
-from manga_ocr.models.localization.localization_utils import image_mask_to_output_tensor, output_tensor_to_image_mask
-from manga_ocr.models.localization.localization_open_cv import locate_lines_in_character_mask
+from comic_ocr.dataset import generated_manga
+from comic_ocr.utils.files import get_path_example_dir
+from comic_ocr.models.localization.localization_utils import image_mask_to_output_tensor, output_tensor_to_image_mask
+from comic_ocr.models.localization.localization_open_cv import locate_lines_in_character_mask
 
 
 def test_locate_lines_in_image_mask():

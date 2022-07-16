@@ -1,10 +1,10 @@
 from torch.utils.data import DataLoader
 
-from manga_ocr.models.localization.conv_unet.conv_unet import ConvUnet
-from manga_ocr.models.localization.localization_dataset import LocalizationDataset
-from manga_ocr.models.localization.localization_utils import image_to_input_tensor
-from manga_ocr.models.localization.train import train
-from manga_ocr.utils.files import get_path_example_dir
+from comic_ocr.models.localization.conv_unet.conv_unet import ConvUnet
+from comic_ocr.models.localization.localization_dataset import LocalizationDataset
+from comic_ocr.models.localization.localization_utils import image_to_input_tensor
+from comic_ocr.models.localization.train import train
+from comic_ocr.utils.files import get_path_example_dir
 
 
 def test_conv_unet_forward():

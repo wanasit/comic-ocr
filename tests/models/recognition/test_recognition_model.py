@@ -1,11 +1,11 @@
 import torch
 from torch.utils.data import DataLoader
 
-from manga_ocr.models.recognition import encode, SUPPORT_DICT_SIZE
-from manga_ocr.models.recognition.crnn.crnn import CRNN
-from manga_ocr.models.recognition.recognition_dataset import RecognitionDataset
-from manga_ocr.models.recognition.recognition_model import image_to_single_input_tensor, compute_ctc_loss
-from manga_ocr.utils.files import load_image, get_path_example_dir
+from comic_ocr.models.recognition import encode, SUPPORT_DICT_SIZE
+from comic_ocr.models.recognition.crnn.crnn import CRNN
+from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset
+from comic_ocr.models.recognition.recognition_model import image_to_single_input_tensor, compute_ctc_loss
+from comic_ocr.utils.files import load_image, get_path_example_dir
 
 
 def test_image_to_single_input_tensor_scale_down():

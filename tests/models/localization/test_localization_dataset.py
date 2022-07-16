@@ -1,9 +1,9 @@
 from torch.utils.data import DataLoader
 
-from manga_ocr.dataset import generated_manga
-from manga_ocr.models.localization.localization_dataset import LocalizationDataset
-from manga_ocr.typing import Size
-from manga_ocr.utils.files import get_path_example_dir
+from comic_ocr.dataset import generated_manga
+from comic_ocr.models.localization.localization_dataset import LocalizationDataset
+from comic_ocr.typing import Size
+from comic_ocr.utils.files import get_path_example_dir
 
 
 def test_load_line_annotated_manga_dataset():
