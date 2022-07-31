@@ -1,17 +1,16 @@
 from typing import List, Tuple, Optional
 
-from PIL.Image import Image
-
 from comic_ocr.models import localization
 from comic_ocr.models import recognition
-from comic_ocr.typing import Rectangle, Paragraph, Line
+from comic_ocr.typing import Rectangle, Paragraph, Line, ImageInput, to_image_rgb
 from comic_ocr.utils.files import get_path_project_dir
 
 _localization_model: Optional[localization.LocalizationModel] = None
 _recognition_model: Optional[recognition.RecognitionModel] = None
 
 
-def read_paragraphs(image: Image) -> List[Paragraph]:
+def read_paragraphs(image: ImageInput) -> List[Paragraph]:
+    image = to_image_rgb(image)
     locations = localize_paragraphs(image)
     model = get_recognition_model()
 
@@ -25,18 +24,21 @@ def read_paragraphs(image: Image) -> List[Paragraph]:
     return paragraphs
 
 
-def read_lines(image: Image) -> List[Line]:
+def read_lines(image: ImageInput) -> List[Line]:
+    image = to_image_rgb(image)
     line_locations = localize_lines(image)
     model = get_recognition_model()
     return [Line.of(model.recognize(image.crop(l)), l) for l in line_locations]
 
 
-def localize_lines(image: Image) -> List[Rectangle]:
+def localize_lines(image: ImageInput) -> List[Rectangle]:
+    image = to_image_rgb(image)
     model = get_localization_model()
     return model.locate_lines(image)
 
 
-def localize_paragraphs(image: Image) -> List[Tuple[Rectangle, List[Rectangle]]]:
+def localize_paragraphs(image: ImageInput) -> List[Tuple[Rectangle, List[Rectangle]]]:
+    image = to_image_rgb(image)
     model = get_localization_model()
     return model.locate_paragraphs(image)
 

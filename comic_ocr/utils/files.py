@@ -1,20 +1,15 @@
 import glob
 import json
 import os
-from pathlib import Path
-from typing import Union, Optional, Tuple, List, Dict
+from typing import Optional, Tuple, List, Dict
 
 from PIL import Image
 
+from comic_ocr.typing import PathLike, ImageRGB
 from comic_ocr.utils.nb_annotation import find_annotation_data_for_image
 
 current_module_dir = os.path.dirname(__file__)
 project_root_dir = os.path.join(current_module_dir, '../../')
-
-PathLike = Union[
-    Path,
-    str
-]
 
 
 def get_path_project_dir(child='') -> str:
@@ -46,7 +41,7 @@ def load_images_with_annotation(
     return images, image_files, annotations
 
 
-def load_images(glob_file_pattern: PathLike) -> Tuple[List[Image.Image], List[str]]:
+def load_images(glob_file_pattern: PathLike) -> Tuple[List[ImageRGB], List[str]]:
     files = glob.glob(str(glob_file_pattern))
     images = []
     image_files = []
@@ -57,7 +52,7 @@ def load_images(glob_file_pattern: PathLike) -> Tuple[List[Image.Image], List[st
     return images, image_files
 
 
-def load_image(file: PathLike) -> Image.Image:
+def load_image(file: PathLike) -> ImageRGB:
     with Image.open(file) as img:
         return img.copy().convert('RGB')
 

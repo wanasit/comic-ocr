@@ -43,7 +43,7 @@ def image_with_annotations(
     for annotation in annotations:
         location = annotation.location if hasattr(annotation, 'location') else annotation
         text = annotation.text if hasattr(annotation, 'text') else ''
-
+        text = text.replace('’', "'")
         draw.rectangle(location, fill=annotation_fill)
         draw.text(
             location.br.move(annotation_text_br_offset_x, annotation_text_br_offset_y),

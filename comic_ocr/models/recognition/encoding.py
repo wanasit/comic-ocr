@@ -2,7 +2,7 @@ from typing import List, Optional
 
 CHAR_ID_PADDING = 0
 CHAR_ID_UNKNOWN = 1
-SUPPORT_CHARACTERS = ' 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!?"#$%&\'’()*+,-.'
+SUPPORT_CHARACTERS = ' 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!?"#$%&\'`()*+,-.'
 SUPPORT_DICT_SIZE = len(SUPPORT_CHARACTERS) + 2
 CHAR_TO_ID = {c: i + 2 for i, c in enumerate(SUPPORT_CHARACTERS)}
 ID_TO_CHAR = {i + 2: c for i, c in enumerate(SUPPORT_CHARACTERS)}

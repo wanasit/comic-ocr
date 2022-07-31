@@ -4,7 +4,11 @@ Pepper & Carrot
 - https://www.peppercarrot.com/en/artworks/sketchbook.html
 - Creative Commons Attribution 4.0 International license
 
-### Mangas
+### Comics and Mangas
+
+xkcd
+* https://xkcd.com/
+* Creative Commons Attribution-NonCommercial 2.5 License.
 
 CherryInTheSun
 - https://www.deviantart.com/cherryinthesun
