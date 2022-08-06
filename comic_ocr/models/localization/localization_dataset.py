@@ -164,6 +164,13 @@ class LocalizationDataset(torch.utils.data.Dataset):
         output_locations_lines = []
 
         for image, lines in zip(original_images, annotations):
+            if image.width < image_size.width or image.height < image_size.height:
+                padded_size = Size.of(
+                    max(image.width, image_size.width),
+                    max(image.height, image_size.height))
+                padded_image = Image.new('RGB', padded_size, (255, 255, 255))
+                padded_image.paste(image, (0, 0))
+                image = padded_image
             mask_image = torch.zeros(size=(image.height, image.width))
             mask_char_image = torch.zeros(size=(image.height, image.width))
             original_image = pil_to_tensor(image.convert('L'))[0] / 255

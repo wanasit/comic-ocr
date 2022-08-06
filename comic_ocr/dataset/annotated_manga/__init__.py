@@ -33,7 +33,7 @@ def load_line_annotated_dataset(
         images (List[Image])
         image_texts (List[List[Line]])
     """
-    images, _, image_annotations = load_images_with_annotation(dataset_dir + '/*.jpg')
+    images, _, image_annotations = load_images_with_annotation(dataset_dir + '/*')
     assert skip_empty_check or len(images) > 0
     image_texts = []
     for image, annotation_data in zip(images, image_annotations):

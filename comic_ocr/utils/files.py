@@ -32,6 +32,8 @@ def load_images_with_annotation(
     image_files = []
     annotations = []
     for file in sorted(files):
+        if file.endswith('.json'):
+            continue
         images.append(load_image(file))
         image_files.append(os.path.abspath(file))
 
