@@ -176,6 +176,8 @@ class LocalizationDataset(torch.utils.data.Dataset):
             original_image = pil_to_tensor(image.convert('L'))[0] / 255
             for l in lines:
                 mask_image[l.location.top: l.location.bottom, l.location.left:l.location.right] = 1.0
+                # This assume the text is darker color on the whiter background
+                # TODO: Remove noise or blurry background
                 mask_char_image[l.location.top: l.location.bottom, l.location.left:l.location.right] = \
                     1 - original_image[l.location.top: l.location.bottom, l.location.left:l.location.right]
 

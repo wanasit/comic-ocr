@@ -2,7 +2,7 @@
 name = "comic-ocr"
 version = "0.1.1"
 description = "An OCR library comic and manga"
-authors = ["Wanasit "]
+authors = ["Wanasit T"]
 license = "MIT License"
 packages = [
     { include = "comic_ocr" },
