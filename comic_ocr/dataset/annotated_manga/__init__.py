@@ -46,6 +46,7 @@ def load_line_annotated_dataset(
 
     return images, image_texts
 
+
 if __name__ == '__main__':
     from comic_ocr.utils.files import get_path_project_dir
     images, lines = load_line_annotated_dataset(get_path_project_dir('data/manga_line_annotated'))

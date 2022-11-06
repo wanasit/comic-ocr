@@ -8,12 +8,12 @@ from comic_ocr.utils.files import get_path_example_dir
 
 def test_default_model_high_level_metrics():
 
+    model = localization.load_model()
+    assert model
+
     dataset_dir = get_path_example_dir('manga_annotated')
     dataset = LocalizationDataset.load_line_annotated_manga_dataset(dataset_dir, image_size=Size.of(500, 500))
     assert dataset
-
-    model = localization.load_model()
-    assert model
 
     metrics = localization.calculate_high_level_metrics(model, dataset)
     assert metrics
