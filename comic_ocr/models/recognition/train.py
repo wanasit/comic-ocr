@@ -104,6 +104,7 @@ def _calculate_validation_loss(model, valid_dataloader):
 
 if __name__ == '__main__':
     from comic_ocr.models.recognition.crnn.crnn import CRNN
+    from comic_ocr.models.recognition.trocr.trocr import TrOCR
 
     path_dataset = get_path_project_dir('data/output/generate_manga_dataset')
     path_output_model = get_path_project_dir('data/output/models/recognition.bin')
@@ -118,8 +119,8 @@ if __name__ == '__main__':
     dataset = RecognitionDataset.load_generated_dataset(path_dataset)
     print(f'Loaded generated manga dataset of size {len(dataset)}...')
 
-    validation_dataset = dataset.subset(to_dix=100)
-    training_dataset = dataset.subset(from_idx=100, to_dix=200)
+    validation_dataset = dataset.subset(to_idx=100)
+    training_dataset = dataset.subset(from_idx=100, to_idx=200)
 
     training_dataset.get_line_image(0).show()
     training_dataset.get_line_image(1).show()

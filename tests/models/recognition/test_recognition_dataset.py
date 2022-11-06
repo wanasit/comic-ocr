@@ -2,17 +2,18 @@ from torch.utils.data import DataLoader
 
 from comic_ocr.models.recognition import encode
 from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset
-from comic_ocr.models.recognition.recognition_model import DEFAULT_INPUT_HEIGHT
+from comic_ocr.models.recognition.recognition_model import RecognitionModel, DEFAULT_INPUT_HEIGHT
 from comic_ocr.utils.files import get_path_example_dir
 
 
 def test_loading_annotated_dataset():
-    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'))
+    model = RecognitionModel()
+    dataset = RecognitionDataset.load_annotated_dataset(model, get_path_example_dir('manga_annotated'))
 
     assert len(dataset) > 0
 
     row = dataset[0]
-    assert row.keys() == {'input', 'output', 'output_length'}
+    assert row.keys() == {'input', 'output', 'output_length', 'text'}
     assert row['input'].shape[0] == 3
     assert row['input'].shape[1] == DEFAULT_INPUT_HEIGHT == 24
 
@@ -27,12 +28,13 @@ def test_loading_annotated_dataset():
 
 
 def test_loading_generated_dataset():
-    dataset = RecognitionDataset.load_generated_dataset(get_path_example_dir('manga_generated'))
+    model = RecognitionModel()
+    dataset = RecognitionDataset.load_generated_dataset(model, get_path_example_dir('manga_generated'))
 
     assert len(dataset) > 0
 
     row = dataset[0]
-    assert row.keys() == {'input', 'output', 'output_length'}
+    assert row.keys() == {'input', 'output', 'output_length', 'text'}
     assert row['input'].shape[0] == 3
     assert row['input'].shape[1] == DEFAULT_INPUT_HEIGHT == 24
 
@@ -47,14 +49,14 @@ def test_loading_generated_dataset():
 
 
 def test_dataset_shuffle():
-    dataset = RecognitionDataset.load_generated_dataset(get_path_example_dir('manga_generated'))
+    model = RecognitionModel()
+    dataset = RecognitionDataset.load_generated_dataset(model, get_path_example_dir('manga_generated'))
 
     # Fixed the seed: [0, 1, 2] => [2, 0, 1]
     dataset = dataset.subset(from_idx=0, to_idx=3)
     dataset_shuffled = dataset.shuffle(random_seed='0')
 
     assert len(dataset_shuffled) == len(dataset) == 3
-    assert dataset_shuffled.input_height == dataset.input_height == DEFAULT_INPUT_HEIGHT
     assert \
         [dataset.get_line_image(2), dataset.get_line_image(0), dataset.get_line_image(1)] == \
         [dataset_shuffled.get_line_image(0), dataset_shuffled.get_line_image(1), dataset_shuffled.get_line_image(2)]
@@ -64,7 +66,8 @@ def test_dataset_shuffle():
 
 
 def test_dataset_merge():
-    dataset = RecognitionDataset.load_generated_dataset(get_path_example_dir('manga_generated'))
+    model = RecognitionModel()
+    dataset = RecognitionDataset.load_generated_dataset(model, get_path_example_dir('manga_generated'))
 
     # Merge: [0, 1, 2] + [2, 3, 4] => [0, 1, 2, 2, 3, 4]
     dataset_a = dataset.subset(from_idx=0, to_idx=3)
@@ -72,7 +75,8 @@ def test_dataset_merge():
     merged_dataset = RecognitionDataset.merge(dataset_a, dataset_b)
 
     assert len(merged_dataset) == 6
-    assert merged_dataset.input_height == dataset_a.input_height == DEFAULT_INPUT_HEIGHT
+    assert merged_dataset.transform_image_to_input_tensor == dataset_a.transform_image_to_input_tensor \
+           == model.transform_image_to_input_tensor
     assert merged_dataset.get_line_image(0) == dataset.get_line_image(0)
     assert merged_dataset.get_line_image(1) == dataset.get_line_image(1)
     assert merged_dataset.get_line_image(2) == dataset.get_line_image(2)
@@ -82,7 +86,8 @@ def test_dataset_merge():
 
 
 def test_dataset_with_loader():
-    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'),
+    model = RecognitionModel()
+    dataset = RecognitionDataset.load_annotated_dataset(model, get_path_example_dir('manga_annotated'),
                                                         random_padding_x=0, random_padding_y=0)
     train_dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
     batch = next(iter(train_dataloader))

@@ -35,7 +35,7 @@ def test_image_to_single_input_tensor_scale_up():
 def test_recognizer_loss_computing():
     recognizer = CRNN()
 
-    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'))
+    dataset = RecognitionDataset.load_annotated_dataset(recognizer, get_path_example_dir('manga_annotated'))
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
 
     batch = next(iter(dataloader))

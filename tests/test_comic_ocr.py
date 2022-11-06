@@ -32,9 +32,8 @@ def test_read_paragraphs():
 
     paragraph_texts = [p.text for p in paragraphs]
     # image_with_annotations(image, paragraphs).show()
-    # assert paragraph_texts[0] == 'DEPRESSION' todo: fix this
-    # assert paragraph_texts[1] == 'ACCEPTANCE'
-    # assert paragraph_texts[2] == '??'
+    assert paragraph_texts[0] == 'DEPRESSION'
+    assert paragraph_texts[1] == 'ACCEPTANCE'
 
 
 def test_locate_lines():
@@ -64,5 +63,5 @@ def test_read_lines():
     assert lines[2].location.can_represent(Rectangle.of_size((42, 14), at=(506, 945)))
     assert lines[3].location.can_represent(Rectangle.of_size((108, 12), at=(473, 961)))
 
-    # assert lines[0].text == 'DEPRESSION'
-    # assert lines[1].text == 'ACCEPTANCE'
+    assert lines[0].text == 'DEPRESSION'
+    assert lines[1].text == 'ACCEPTANCE'

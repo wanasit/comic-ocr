@@ -21,11 +21,10 @@ class CRNN(RecognitionModel):
 
     def __init__(
             self,
-            feature_extraction_num_features=128,
-            sequential_input_size=64,
-            sequential_hidden_size=64,
-            sequential_num_layers=3,
-            prediction_hidden_size=128,
+            feature_extraction_num_features=(64, 128, 256),
+            sequential_input_size=256,
+            sequential_num_features=(256, 512),
+            prediction_hidden_size=1024,
             **kwargs,
     ):
         super().__init__(**kwargs, prediction_hidden_size=prediction_hidden_size)
@@ -33,48 +32,81 @@ class CRNN(RecognitionModel):
         # Todo: Try resnet
         # resnet = resnet18(pretrained=True)
         # resnet_modules = list(resnet.children())[:-3]
+        self.feature_extraction_model = nn.Sequential()
 
-        self.feature_extraction_model = nn.Sequential(
-            # nn.Sequential(*resnet_modules),
-            nn.Sequential(
-                nn.Conv2d(self.input_channel, feature_extraction_num_features, kernel_size=3, stride=1, padding=1),
-                nn.BatchNorm2d(feature_extraction_num_features),
-                nn.ReLU(inplace=True)
+        input_channel = self.input_channel
+        input_height = self.input_height
+        for i, num_features in enumerate(feature_extraction_num_features):
+            self.feature_extraction_model.add_module(
+                'ConvolutionLayer_%d' % i,
+                nn.Sequential(
+                    nn.Conv2d(input_channel, num_features, kernel_size=3, stride=1, padding=1),
+                    nn.BatchNorm2d(num_features),
+                    nn.LeakyReLU(inplace=True),
+                    nn.MaxPool2d(kernel_size=2, stride=2),
+                )
             )
-        )
+            input_channel = num_features
+            input_height = input_height // 2
 
         self.sequential_model = nn.Sequential(
-            nn.Linear(feature_extraction_num_features * self.input_height, sequential_input_size),
-            BidirectionalRNNBlock(
-                input_size=sequential_input_size,
-                hidden_size=sequential_hidden_size,
-                num_layers=sequential_num_layers,
-                output_size=self.prediction_hidden_size)
+            nn.Linear(input_channel * input_height, sequential_input_size),
+        )
+        for i, num_features in enumerate(sequential_num_features):
+            self.sequential_model.add_module(
+                'RNNLayer_%d' % i,
+                BidirectionalRNNBlock(sequential_input_size, num_features)
+            )
+            sequential_input_size = 2 * num_features
+        self.sequential_model.add_module(
+            'RNN_output_projection',
+            nn.Linear(sequential_input_size, prediction_hidden_size))
+
+    @staticmethod
+    def create():
+        return CRNN()
+
+    @staticmethod
+    def create_small_model():
+        return CRNN(
+            feature_extraction_num_features=(64, 128),
+            sequential_input_size=128,
+            sequential_num_features=(128,),
+            prediction_hidden_size=128,
         )
 
 
 class BidirectionalRNNBlock(nn.Module):
+    """
+    input : visual feature [batch_size x T x input_size]
+    output : contextual feature [batch_size x T x output_size]
+    """
 
-    def __init__(self, input_size, hidden_size, output_size, num_layers=2):
+    def __init__(self, input_size, hidden_size, num_layers=1):
         super(BidirectionalRNNBlock, self).__init__()
         self.rnn = nn.LSTM(input_size, hidden_size, num_layers=num_layers, bidirectional=True, batch_first=True)
-        self.linear = nn.Linear(hidden_size * 2, output_size)
 
     def forward(self, input):
-        """
-        input : visual feature [batch_size x T x input_size]
-        output : contextual feature [batch_size x T x output_size]
-        """
         recurrent, _ = self.rnn(input)  # batch_size x T x input_size -> batch_size x T x (2*hidden_size)
-        output = self.linear(recurrent)  # batch_size x T x output_size
-        return output
+        return recurrent
 
 
 if __name__ == '__main__':
-    from comic_ocr.utils.files import get_path_example_dir, load_image
+    from comic_ocr.utils.files import get_path_project_dir
     from comic_ocr.utils.pytorch_model import get_total_parameters_count
-    recognizer = CRNN()
+    from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset
+    from torch.utils.data import DataLoader
+
+    recognizer = CRNN.create_small_model()
     print(get_total_parameters_count(recognizer))
-    image = load_image(get_path_example_dir('manga_annotated/normal_01.jpg'))
-    input = image_to_single_input_tensor(recognizer.input_height, image)
-    recognizer(input.unsqueeze(0))
+
+    # recognizer = CRNN.create()
+    # print(get_total_parameters_count(recognizer))
+
+    dataset = RecognitionDataset.load_annotated_dataset(recognizer, get_path_project_dir('data/manga_line_annotated'))
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
+    print(recognizer.recognize(dataset.get_line_image(0)), dataset.get_line_text(0))
+
+    batch = next(iter(dataloader))
+    loss = recognizer.compute_loss(batch)
+    print('loss', loss)
