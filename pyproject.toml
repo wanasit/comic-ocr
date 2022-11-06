@@ -17,6 +17,7 @@ opencv-python = "^4.5.4.60"
 numpy = "^1.21"
 Pillow = "^9.1"
 tqdm = "^4"
+transformers = "^4.23.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7"
