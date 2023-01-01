@@ -33,7 +33,7 @@ def locate_paragraphs_in_character_mask(
 
 def locate_lines_in_character_mask(
         input_tensor: Union[np.ndarray, torch.Tensor],
-        input_threshold: float = 0.40,
+        input_threshold: float = 0.60,
         expand_detected_component: Tuple[int, int] = (2, 1),
         expand_detected_line: Tuple[int, int] = (2, 2),
         debugging: bool = False
@@ -58,7 +58,7 @@ def locate_lines_in_character_mask(
 
     if len(input_tensor.shape) == 3:
         input_tensor = input_tensor.mean(axis=0)
-
+    _debugging_show(debugging, input_tensor)
     _, thresh = cv2.threshold(input_tensor, input_threshold, 1, cv2.THRESH_BINARY)
     _debugging_show(debugging, thresh)
 

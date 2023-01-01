@@ -30,9 +30,9 @@ def load_or_create_new_model(model_file: PathLike = DEFAULT_TRAINED_MODEL_FILE) 
     return create_new_model()
 
 
-def create_new_model() -> LocalizationModel:
+def create_new_model(**kwargs) -> LocalizationModel:
     from comic_ocr.models.localization.conv_unet.conv_unet import ConvUnet
-    return ConvUnet()
+    return ConvUnet(**kwargs)
 
 
 def load_model(

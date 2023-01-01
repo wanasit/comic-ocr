@@ -8,11 +8,11 @@ from comic_ocr.utils.files import load_image, get_path_project_dir
 def test_localize_paragraphs():
     image = load_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))
 
-    paragraphs = comic_ocr.localize_paragraphs(image)
+    paragraphs = comic_ocr.localize_paragraphs(image, debugging=True)
+    paragraph_locations = [l for l, _ in paragraphs]
+    image_with_annotations(image, paragraph_locations).show()
     assert len(paragraphs) == 3
 
-    paragraph_locations = [l for l, _ in paragraphs]
-    # image_with_annotations(image, paragraph_locations).show()
     assert paragraph_locations[0].can_represent(Rectangle.of_size((87, 16), at=(309, 459)))
     assert paragraph_locations[1].can_represent(Rectangle.of_size((95, 20), at=(333, 715)))
     assert paragraph_locations[2].can_represent(Rectangle.of_size((108, 28), at=(473, 945)))

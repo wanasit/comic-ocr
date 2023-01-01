@@ -6,13 +6,12 @@ from torch import nn
 import torch.nn.functional as F
 
 from comic_ocr.models.localization.localization_model import LocalizationModel
-from comic_ocr.utils.files import load_images
 
 
 class ConvUnet(LocalizationModel):
 
-    def __init__(self):
-        super(ConvUnet, self).__init__()
+    def __init__(self, **kwargs):
+        super(ConvUnet, self).__init__(**kwargs)
 
         self.down_conv_3 = ConvWithPoolingToHalfSize(3, num_output_channel=8)
         self.down_conv_2 = ConvWithPoolingToHalfSize(8, kernel_size=5, padding=2, num_output_channel=16)
@@ -82,13 +81,15 @@ class DoubleConvWithSecondInput(nn.Module):
     def __init__(self,
                  num_main_input_channel,
                  num_second_input_channel,
-                 num_output_channel):
+                 num_output_channel,
+                 kernel_size=3,
+                 padding=1):
         super(DoubleConvWithSecondInput, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(num_second_input_channel + num_main_input_channel, num_main_input_channel, kernel_size=1),
             nn.BatchNorm2d(num_main_input_channel),
             nn.ReLU(inplace=True),
-            nn.Conv2d(num_main_input_channel, num_output_channel, kernel_size=3, padding=1),
+            nn.Conv2d(num_main_input_channel, num_output_channel, kernel_size=kernel_size, padding=padding),
             nn.BatchNorm2d(num_output_channel),
             nn.ReLU(inplace=True)
         )
@@ -99,16 +100,15 @@ class DoubleConvWithSecondInput(nn.Module):
         return x
 
 
-
 if __name__ == '__main__':
-    from torchvision import models
-    from torchvision.models.vgg import model_urls
     from comic_ocr.utils.pytorch_model import get_total_parameters_count
+    from comic_ocr.utils.files import load_image, get_path_project_dir
     module_path = os.path.dirname(__file__)
-    input_images = load_images(module_path + "/../../../out/generate/input/*.jpg")
-    output_images = load_images(module_path + "/../../../out/generate/output/*.jpg")
+
 
     model = ConvUnet()
     print(get_total_parameters_count(model))
-    # input = model.image_to_input(input_images[0]).unsqueeze(0)
-    # output_char, output_mask = model(input)
+
+    example = load_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))
+    input = model.image_to_tensor(example).unsqueeze(0)
+    output_char, output_mask = model(input)

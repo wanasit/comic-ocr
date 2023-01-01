@@ -12,7 +12,7 @@ def test_default_model_high_level_metrics():
     assert model
 
     dataset_dir = get_path_example_dir('manga_annotated')
-    dataset = LocalizationDataset.load_line_annotated_manga_dataset(dataset_dir, image_size=Size.of(500, 500))
+    dataset = LocalizationDataset.load_line_annotated_dataset(model, dataset_dir)
     assert dataset
 
     metrics = localization.calculate_high_level_metrics(model, dataset)

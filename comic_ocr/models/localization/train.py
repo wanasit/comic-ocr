@@ -3,14 +3,11 @@ import os
 from typing import Optional, Callable
 
 import torch
-from torch import optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-
 from comic_ocr.models.localization.localization_dataset import LocalizationDataset
 from comic_ocr.models.localization.localization_model import LocalizationModel
-from comic_ocr.typing import Size
 from comic_ocr.utils.pytorch_model import calculate_validation_loss
 
 logger = logging.getLogger(__name__)
@@ -27,9 +24,11 @@ def train(
         epoch_callback: Optional[Callable] = None,
         tqdm_disable=False,
         batch_size=10,
-        optimizer=None
+        optimizer=None,
+        scheduler=None
 ):
-    optimizer = optimizer if optimizer else optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optimizer if optimizer else torch.optim.Adam(model.parameters(), lr=0.001)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
 
     logger.info(f'Training {epoch_count} epochs, on {len(train_dataset)} samples ' +
                 f'({len(validate_dataset)} validation samples)' if validate_dataset else '')
@@ -49,6 +48,7 @@ def train(
             training_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
             for i_batch, batch in enumerate(training_dataloader):
+                model.train()
                 optimizer.zero_grad()
                 loss = model.compute_loss(batch)
                 loss.backward()
@@ -75,12 +75,15 @@ def train(
 
                 tepoch.update(current_batch_size)
                 tepoch.set_postfix(
-                    current_batch_loss=current_batch_loss,
-                    validation_loss=all_validate_losses[-1] if all_validate_losses else 0)
+                    train_loss=current_batch_loss,
+                    val_loss=all_validate_losses[-1] if all_validate_losses else 0,
+                    lr=optimizer.param_groups[0]['lr'])
 
+            scheduler.step()
             training_loss = epoch_training_total_loss / epoch_training_total_count
             validation_loss = all_validate_losses[-1] if all_validate_losses else 0
-            tepoch.set_postfix(train_loss=training_loss, validate_loss=validation_loss)
+            tepoch.set_postfix(train_loss=training_loss, val_loss=validation_loss,
+                               lr=optimizer.param_groups[0]['lr'])
             logger.info(f'> Finished training with training_loss={training_loss}, validation_loss={validation_loss}')
 
             if epoch_callback:
@@ -104,9 +107,6 @@ if __name__ == '__main__':
     path_dataset = get_path_project_dir('data/manga_line_annotated')
     dataset = LocalizationDataset.load_line_annotated_manga_dataset(path_dataset, image_size=model.preferred_image_size)
     print(f'Loaded dataset of size {len(dataset)}...')
-
-    #dataset.get_image(0).show()
-    #dataset.get_mask_line(0).show()
 
     validation_dataset = dataset.subset(to_idx=2)
     training_dataset = dataset.subset(from_idx=2)

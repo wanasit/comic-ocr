@@ -1,5 +1,8 @@
 import torch
 
+# Extends `torchvision.transforms`
+from torchvision.transforms import *
+
 
 class AddGaussianNoise(object):
     def __init__(self, mean=0., std=0.15):

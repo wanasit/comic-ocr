@@ -5,6 +5,7 @@
 import math
 from typing import Union, Iterable
 
+import numpy
 import numpy as np
 import torch
 from PIL import Image
@@ -18,20 +19,21 @@ TRANSFORM_TO_GRAY_SCALE = transforms.Grayscale()
 TRANSFORM_ADD_NOISE = AddGaussianNoise()
 
 
-def image_to_input_tensor(
+def image_to_tensor(
         image: Image.Image
 ) -> torch.Tensor:
     input = TRANSFORM_TO_TENSOR(image).float() / 255
     return input
 
 
-def image_mask_to_output_tensor(
+def output_mark_image_to_tensor(
         image: Image.Image,
         threshold_min: float = 0.5,
         threshold_max: float = 1.0
 ) -> torch.Tensor:
-    output = image_to_input_tensor(image)
-    output = TRANSFORM_TO_GRAY_SCALE(output)[0]
+    image = image.convert('L')
+    # noinspection PyTypeChecker
+    output = torch.as_tensor(np.array(image, copy=True)).float() / 255
     output = ((threshold_max >= output) & (output > threshold_min)).float()
     return output
 
@@ -44,7 +46,7 @@ def output_tensor_to_image_mask(tensor_or_array: Union[torch.Tensor, np.ndarray]
     if len(array.shape) == 3:
         array = array.mean(0)
 
-    return Image.fromarray(np.uint8(array * 255), 'L').convert('RGB')
+    return Image.fromarray(np.uint8(array * 255), 'L')
 
 
 def align_line_horizontal(block_a: Rectangle, block_b: Rectangle, x_min_margin=10, y_margin=2):

@@ -31,22 +31,23 @@ def read_lines(image: ImageInput) -> List[Line]:
     return [Line.of(model.recognize(image.crop(l)), l) for l in line_locations]
 
 
-def localize_lines(image: ImageInput) -> List[Rectangle]:
+def localize_lines(image: ImageInput, **kwargs) -> List[Rectangle]:
     image = to_image_rgb(image)
     model = get_localization_model()
-    return model.locate_lines(image)
+    return model.locate_lines(image, **kwargs)
 
 
-def localize_paragraphs(image: ImageInput) -> List[Tuple[Rectangle, List[Rectangle]]]:
+def localize_paragraphs(image: ImageInput, **kwargs) -> List[Tuple[Rectangle, List[Rectangle]]]:
     image = to_image_rgb(image)
     model = get_localization_model()
-    return model.locate_paragraphs(image)
+    return model.locate_paragraphs(image, **kwargs)
 
 
 def get_localization_model() -> localization.LocalizationModel:
     global _localization_model
     if not _localization_model:
         _localization_model = localization.load_model()
+        _localization_model.eval()
 
     return _localization_model
 
@@ -55,6 +56,7 @@ def get_recognition_model() -> recognition.RecognitionModel:
     global _recognition_model
     if not _recognition_model:
         _recognition_model = recognition.load_model()
+        _recognition_model.eval()
 
     return _recognition_model
 

@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 
 def calculate_validation_loss(model, validation_dataset, batch_size=1) -> float:
     assert getattr(model, "compute_loss"), 'Unknown model'
-
+    model.eval()
     total_loss = 0
     total_count = len(validation_dataset)
     with torch.no_grad():
