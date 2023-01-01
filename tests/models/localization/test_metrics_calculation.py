@@ -1,4 +1,4 @@
-from comic_ocr.typing import Rectangle
+from comic_ocr.types import Rectangle
 from comic_ocr.models import localization
 
 

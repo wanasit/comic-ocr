@@ -2,7 +2,7 @@ from typing import List, Tuple, Optional
 
 from comic_ocr.models import localization
 from comic_ocr.models import recognition
-from comic_ocr.typing import Rectangle, Paragraph, Line, ImageInput, to_image_rgb
+from comic_ocr.types import Rectangle, Paragraph, Line, ImageInput, to_image_rgb
 from comic_ocr.utils.files import get_path_project_dir
 
 _localization_model: Optional[localization.LocalizationModel] = None

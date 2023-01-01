@@ -1,6 +1,6 @@
 from comic_ocr import Rectangle
 from comic_ocr.models.localization.localization_utils import divine_rect_into_overlapping_tiles, align_line_horizontal
-from comic_ocr.typing import Size
+from comic_ocr.types import Size
 
 
 def test_align_line_horizontal_on_good_align():

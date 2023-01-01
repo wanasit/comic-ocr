@@ -14,7 +14,7 @@ from comic_ocr.models.localization.localization_utils import divine_rect_into_ov
 from comic_ocr.models.localization.localization_utils import image_mask_to_output_tensor
 from comic_ocr.models.localization.localization_utils import image_to_input_tensor
 from comic_ocr.models.localization.localization_utils import output_tensor_to_image_mask
-from comic_ocr.typing import Size, Rectangle
+from comic_ocr.types import Size, Rectangle
 
 
 class LocalizationDataset(torch.utils.data.Dataset):

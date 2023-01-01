@@ -5,7 +5,7 @@ from PIL import Image
 import comic_ocr.dataset.generated_manga as generated_manga
 from comic_ocr import Rectangle
 from comic_ocr.dataset.generated_manga.text_area import TextArea
-from comic_ocr.typing import Point
+from comic_ocr.types import Point
 from comic_ocr.utils.files import get_path_example_dir
 
 

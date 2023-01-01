@@ -4,7 +4,7 @@ from typing import List, Optional
 from PIL import Image, ImageDraw, ImageFont
 
 from comic_ocr.dataset.generated_manga.text_area import TextArea
-from comic_ocr.typing import Rectangle, Color, Drawable, to_draw
+from comic_ocr.types import Rectangle, Color, Drawable, to_draw
 
 
 @dataclass

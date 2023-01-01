@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from PIL import ImageFont
 
-from comic_ocr.typing import Rectangle, Point, Size, Line, Drawable, Color, to_draw
+from comic_ocr.types import Rectangle, Point, Size, Line, Drawable, Color, to_draw
 
 
 @dataclass

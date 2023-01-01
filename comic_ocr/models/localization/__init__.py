@@ -9,7 +9,7 @@ from typing import Iterable
 
 import torch
 
-from comic_ocr.typing import Rectangle
+from comic_ocr.types import Rectangle
 from comic_ocr.models.localization.localization_model import LocalizationModel
 from comic_ocr.models.localization.localization_dataset import LocalizationDataset
 from comic_ocr.utils.files import PathLike, get_path_project_dir, load_image

@@ -2,7 +2,7 @@ from torch.utils.data import DataLoader
 
 from comic_ocr.dataset import generated_manga
 from comic_ocr.models.localization.localization_dataset import LocalizationDataset
-from comic_ocr.typing import Size
+from comic_ocr.types import Size
 from comic_ocr.utils.files import get_path_example_dir
 
 

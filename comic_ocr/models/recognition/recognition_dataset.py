@@ -11,7 +11,7 @@ import comic_ocr.dataset.generated_manga as generated_manga
 
 from comic_ocr.models.recognition import encode
 from comic_ocr.models.recognition.recognition_model import TransformImageToTensor, RecognitionModel
-from comic_ocr.typing import Rectangle
+from comic_ocr.types import Rectangle
 
 
 class RecognitionDataset(Dataset):

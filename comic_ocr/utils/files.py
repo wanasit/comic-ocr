@@ -5,7 +5,7 @@ from typing import Optional, Tuple, List, Dict
 
 from PIL import Image
 
-from comic_ocr.typing import PathLike, ImageRGB
+from comic_ocr.types import PathLike, ImageRGB
 from comic_ocr.utils.nb_annotation import find_annotation_data_for_image
 
 current_module_dir = os.path.dirname(__file__)

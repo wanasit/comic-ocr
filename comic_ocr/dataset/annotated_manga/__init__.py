@@ -1,4 +1,4 @@
-"""A module for loading annotated manga dataset
+"""A module for loading annotated comic dataset
 
 This module uses `comic_ocr.utils.labelling_notebook` for loading the annotation data.
 The annotation should be in `labelling-notebook` format:
@@ -13,7 +13,7 @@ from typing import List, Tuple, Optional
 
 from PIL.Image import Image
 
-from comic_ocr.typing import Line
+from comic_ocr.types import Line
 from comic_ocr.utils.files import load_images_with_annotation
 from comic_ocr.utils.nb_annotation import lines_from_nb_annotation_data
 

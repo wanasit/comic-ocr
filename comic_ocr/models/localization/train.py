@@ -10,7 +10,6 @@ from tqdm import tqdm
 
 from comic_ocr.models.localization.localization_dataset import LocalizationDataset
 from comic_ocr.models.localization.localization_model import LocalizationModel
-from comic_ocr.typing import Size
 from comic_ocr.utils.pytorch_model import calculate_validation_loss
 
 logger = logging.getLogger(__name__)

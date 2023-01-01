@@ -12,7 +12,7 @@ from PIL import Image
 
 from comic_ocr.dataset.generated_manga.generator import MangaGenerator
 from comic_ocr.dataset.generated_manga.text_area import TextArea
-from comic_ocr.typing import Color, Size, Line
+from comic_ocr.types import Color, Size, Line
 from comic_ocr.utils.files import load_images_with_annotation, load_images, write_json_dict
 from comic_ocr.utils.nb_annotation import lines_to_nb_annotation_data, lines_from_nb_annotation_data
 

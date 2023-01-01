@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 from comic_ocr.dataset.generated_manga.text_area import TextArea
-from comic_ocr.typing import Color, Drawable, to_draw
+from comic_ocr.types import Color, Drawable, to_draw
 
 
 @dataclass

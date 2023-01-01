@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import Tuple, List, Union, Optional
-from comic_ocr.typing import Rectangle, RectangleLike
+from comic_ocr.types import Rectangle, RectangleLike
 
 
 class Line(tuple):

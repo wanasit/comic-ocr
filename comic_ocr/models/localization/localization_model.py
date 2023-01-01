@@ -10,7 +10,7 @@ from torch import nn, Tensor
 
 from comic_ocr.models.localization import localization_open_cv as cv
 from comic_ocr.models.localization.localization_utils import image_to_input_tensor, output_tensor_to_image_mask
-from comic_ocr.typing import Size, Rectangle
+from comic_ocr.types import Size, Rectangle
 
 DEFAULT_LOSS_CRITERION_CHAR = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([2]))
 DEFAULT_LOSS_CRITERION_LINE = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([0.5]))

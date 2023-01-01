@@ -2,7 +2,7 @@ import comic_ocr
 from comic_ocr import Rectangle
 
 from comic_ocr.models import localization
-from comic_ocr.typing import Size
+from comic_ocr.types import Size
 from comic_ocr.utils.files import load_image, get_path_project_dir
 
 

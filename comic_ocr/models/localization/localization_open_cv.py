@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import torch
 
-from comic_ocr.typing import Rectangle
+from comic_ocr.types import Rectangle
 
 
 def locate_paragraphs_in_character_mask(

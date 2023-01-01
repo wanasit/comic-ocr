@@ -2,7 +2,7 @@ from typing import List, Union
 
 from PIL import Image, ImageDraw, ImageFont
 
-from comic_ocr.typing import Rectangle, Paragraph, Line, Color
+from comic_ocr.types import Rectangle, Paragraph, Line, Color
 from comic_ocr.utils.files import get_path_project_dir
 
 

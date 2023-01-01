@@ -9,7 +9,7 @@ from PIL import ImageFont
 from comic_ocr.dataset.generated_manga.text_area import TextArea
 from comic_ocr.dataset.generated_manga.text_bubble import TextBubble
 from comic_ocr.dataset.generated_manga.text_rect import TextRect
-from comic_ocr.typing import Rectangle, Point, Drawable, Size
+from comic_ocr.types import Rectangle, Point, Drawable, Size
 from comic_ocr.utils.files import get_path_example_dir, load_images, load_texts
 
 

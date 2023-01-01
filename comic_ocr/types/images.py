@@ -4,7 +4,7 @@ from typing import Union, Tuple
 
 from PIL import Image, ImageDraw
 
-from comic_ocr.typing import PathLike
+from comic_ocr.types import PathLike
 
 '''
 A type representing an input image or image file. 

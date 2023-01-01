@@ -9,7 +9,7 @@ import json
 import os
 from typing import List, Dict, Optional
 
-from comic_ocr.typing import Line, Rectangle
+from comic_ocr.types import Line, Rectangle
 
 
 def find_annotation_data_for_image(img_path: str, alt_directory: Optional[str] = None) -> Optional[Dict]:
