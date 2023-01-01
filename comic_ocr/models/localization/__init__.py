@@ -54,6 +54,9 @@ def calculate_high_level_metrics(
         model: LocalizationModel,
         dataset: LocalizationDataset
 ):
+    """
+    Calculate understandable high-level metrics (e.g. accuracy for locating lines).
+    """
     assert len(dataset) > 0
     assert dataset.output_locations_lines, 'Requires dataset with line locations information'
     total_tp = 0
@@ -75,21 +78,26 @@ def calculate_high_level_metrics(
         "total_line_level_false_positive": total_fp,
         "total_line_level_false_negative": total_fn,
         "line_level_precision": total_tp / (total_tp + total_fp),
-        "line_level_recall": total_tp / (total_tp + total_fn)
+        "line_level_recall": total_tp / (total_tp + total_fn),
+        "line_level_accuracy": total_tp / (total_tp + total_fn + total_fp)
     }
 
 
 def match_location_rectangles_with_baseline(locations: Iterable[Rectangle], baseline_locations: Iterable[Rectangle]):
     matched_pairs = []
     unmatched_locations = []
+    matched_base_line_indexes = set()
 
     for location in locations:
         for i, baseline_location in enumerate(baseline_locations):
+            if i in matched_base_line_indexes:
+                continue
             if location.can_represent(baseline_location):
                 matched_pairs.append((location, baseline_location))
-                baseline_locations = baseline_locations[:i] + baseline_locations[i + 1:]
+                matched_base_line_indexes.add(i)
                 break
         else:
             unmatched_locations.append(location)
 
-    return matched_pairs, unmatched_locations, baseline_locations
+    unmatched_baseline_locations = [l for i, l in enumerate(baseline_locations) if i not in matched_base_line_indexes]
+    return matched_pairs, unmatched_locations, unmatched_baseline_locations

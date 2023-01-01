@@ -179,7 +179,7 @@ class Rectangle(tuple):
         similarity = Rectangle.jaccard_similarity(self, rect)
         return similarity >= threshold
 
-    def can_represent(self, rect: RectangleLike, threshold_precision=0.7, threshold_recall=0.9) -> bool:
+    def can_represent(self, rect: RectangleLike, threshold_precision=0.7, threshold_recall=0.8) -> bool:
         intersect_rect = Rectangle.intersect_bounding_rect((self, rect))
         if not intersect_rect:
             return False
