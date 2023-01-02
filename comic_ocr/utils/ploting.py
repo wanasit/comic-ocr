@@ -1,4 +1,4 @@
-from typing import Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple, Collection
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,7 +19,7 @@ def show_images(
 
     plt.figure(figsize=figsize)
     col_count = min(num_col, len(images))
-    row_count = len(images) // num_col + 1
+    row_count = (len(images) + num_col - 1) // num_col
     for i in range(len(images)):
         # noinspection PyTypeChecker
         conv_img = np.asarray(images[i])
@@ -60,6 +60,23 @@ def show_image_recognition(
     plt.title(title)
     plt.axis('off')
 
+
+def plot_metrics(
+        metrics: Collection[Tuple[str, List[float]]],
+        num_col: int = 3,
+        figsize: Tuple[int, int] = (12, 6),
+):
+    plt.figure(figsize=figsize)
+    col_count = min(num_col, len(metrics))
+    row_count = (len(metrics) + num_col - 1) // num_col
+    fig, ax = plt.subplots(row_count, col_count, figsize=figsize)
+    for i, (name, values) in enumerate(metrics):
+        sub_plt = ax[i // col_count][i % col_count] if row_count > 1 else ax[i]
+        sub_plt.set_title(name)
+        sub_plt.plot(values)
+        sub_plt.grid()
+    plt.tight_layout(h_pad=2)
+    plt.show()
 
 def plot_losses(
         train_losses: List[float],
