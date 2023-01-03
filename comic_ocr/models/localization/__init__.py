@@ -77,9 +77,9 @@ def calculate_high_level_metrics(
         "total_line_level_true_positive": total_tp,
         "total_line_level_false_positive": total_fp,
         "total_line_level_false_negative": total_fn,
-        "line_level_precision": total_tp / (total_tp + total_fp),
-        "line_level_recall": total_tp / (total_tp + total_fn),
-        "line_level_accuracy": total_tp / (total_tp + total_fn + total_fp)
+        "line_level_precision": total_tp / (total_tp + total_fp) if total_tp + total_fp > 0 else 0,
+        "line_level_recall": total_tp / (total_tp + total_fn) if total_tp + total_fn > 0 else 0,
+        "line_level_accuracy": total_tp / (total_tp + total_fn + total_fp) if total_tp + total_fn + total_fp > 0 else 0
     }
 
 
