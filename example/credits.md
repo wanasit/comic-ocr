@@ -10,10 +10,17 @@ xkcd
 * https://xkcd.com/
 * Creative Commons Attribution-NonCommercial 2.5 License.
 
-CherryInTheSun
+CherryInTheSun (deviantart.com)
 - https://www.deviantart.com/cherryinthesun
 - Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 License
 
+LoulouVZ (deviantart.com)
+- https://www.deviantart.com/loulouvz
+- Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 License
+
+BoskoComicArtist (deviantart.com)
+- https://www.deviantart.com/boskocomicartist
+- Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 License
 
 ### Fonts
 https://www.dafont.com/cool-cat.font
