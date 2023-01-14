@@ -16,6 +16,7 @@ def test_trained_localization_model_high_level_metrics():
     assert dataset
 
     metrics = localization.calculate_high_level_metrics(model, dataset)
+    # print(metrics)
     assert metrics
     assert metrics["line_level_precision"] > 0.5
     assert metrics["line_level_recall"] > 0.5

@@ -105,16 +105,18 @@ def group_lines_into_paragraphs(lines: List[Rectangle]) -> List[Tuple[Rectangle,
 
 
 def align_line_horizontal(block_a: Rectangle, block_b: Rectangle, x_min_margin=10, y_margin=2):
-    if block_b.left < block_a.left:
-        block_a, block_b = block_b, block_a
-    if block_b in block_a:
-        return True
-    if block_a in block_b:
-        return True
+    """Returns true if two input character blocks are aligned into horizontal line."""
 
+    # First, check if horizontal distance (x-axis) is too far apart
     x_margin = max(block_a.height, block_b.height, x_min_margin)
-    return (block_a.top - y_margin) <= block_b.center.y <= (block_a.bottom + y_margin) and \
-           (abs(block_a.left - block_b.left) - block_a.width) < x_margin
+    x_distance = max(block_a.left, block_b.left) - min(block_a.right, block_b.right)
+    if x_distance > x_margin:
+        return False
+
+    # Assume block_a is taller than block_b, we check if the block_b is vertically within block_a
+    if block_a.height < block_b.height:
+        block_a, block_b = block_b, block_a
+    return (block_b.bottom <= block_a.bottom + y_margin) and (block_b.top >= block_a.top - y_margin)
 
 
 def align_paragraph_left(paragraph_rect: Rectangle, line_rect: Rectangle, x_margin=5, y_min_margin=10):
