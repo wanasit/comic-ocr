@@ -1,4 +1,4 @@
-"""The module provides abstract/shared functionalities for ML model for localization
+"""An abstraction and shared functionalities for localization models.
 """
 
 import os
@@ -17,30 +17,33 @@ DEFAULT_LOSS_CRITERION_LINE = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([0.5]
 
 
 class LocalizationModel(nn.Module):
-    """An abstract for localization Module for text localization
+    """An abstract for localization models (nn.Module).
 
-    The ML model (Pytorch) classifies each input image's pixel if it's part of a character, a line boundary, or a
-    paragraph boundary. The model output those probabilities as 'mask images' in training dataset format. Namely, given
-    the input source image, the model is trained to output three types of mask images.
+    A localization model extends this abstraction should classify if input image's pixel a character or a line (Semantic
+    Segmentation problem). Specifically, given an image as input, the model should output upto probability masks
+    (similar size to input) for each pixel is a part of a character or a line.
 
-    Args:
-        input_image (Tensor [C x H x W])
+    For training, this abstract class implements `compute_loss()` that computes the model binary classification loss on
+    a LocalizationDataset's batch (images and labelled marks).
 
-    Returns probability maps (un-normalized):
-        output_mask_character (Tensor [H x W]) the probability that the pixel is character/text
-        output_mask_line (Tensor [H x W]) the probability that the pixel is inside line rect boundary
-
-    The module also applies other non-ML image-processing techniques on top of the mask images to output the locations.
-
-    Example:
-        model = ....
-        paragraph_rectangles = model.locate_lines(image)
+    For evaluation or serving, this abstract class implements `locate_paragraphs()` (and `locate_lines()`) that takes
+    image input, computes the probability via the model, and uses heuristic OpenCV techniques to identify the lines.
     """
-
-    __call__: Callable[..., Tuple[Tensor, Tensor]]
 
     def __init__(self):
         super().__init__()
+
+    def forward(self, input_images: Tensor) -> Tuple[Tensor, Tensor]:
+        """Computes character and line probability marks for the input image.
+
+        Args:
+            input_images (Tensor[?, C=3, H, W]): the input image
+
+        Returns:
+            output_mask_character (Tensor[?, H, W]): The return value. True for success, False otherwise.
+            output_mask_line (Tensor[?, H, W]):
+        """
+        raise NotImplementedError
 
     @property
     def preferred_image_size(self) -> Size:

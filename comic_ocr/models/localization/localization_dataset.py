@@ -1,3 +1,5 @@
+"""The dataset (Pytorch) for training and evaluating localization model.
+"""
 from __future__ import annotations
 
 from random import Random
@@ -18,6 +20,11 @@ from comic_ocr.types import Size, Rectangle
 
 
 class LocalizationDataset(torch.utils.data.Dataset):
+    """A dataset for training and evaluating `LocalizationModel`.
+
+    Each dataset entry consists of an input image and its binary marks for text characters, lines, and paragraphs (each
+    of the mark is optional).
+    """
 
     def __init__(self,
                  images: List[Image.Image],

@@ -1,5 +1,4 @@
 """Localization methods based-on OpenCV (opencv-python or cv2)
-
 """
 from typing import Union, Tuple, List
 

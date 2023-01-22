@@ -22,11 +22,10 @@ logger = logging.getLogger(__name__)
 
 def load_or_create_new_model(model_file: PathLike = DEFAULT_TRAINED_MODEL_FILE) -> LocalizationModel:
     try:
-        model = load_model(model_file)
-        model()
-    except:
+        model = load_model(model_file, test_executing_model=True)
+        return model
+    except (Exception,):
         logger.info(f'Fail loading model at [{model_file}]. Creating a new model.')
-
     return create_new_model()
 
 
