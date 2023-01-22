@@ -9,7 +9,7 @@ from comic_ocr.utils.files import get_path_example_dir
 def test_load_line_annotated_manga_dataset():
     dataset_dir = get_path_example_dir('manga_annotated')
     dataset = LocalizationDataset.load_line_annotated_manga_dataset(dataset_dir, image_size=Size.of(400, 500))
-    assert len(dataset) == 24
+    assert len(dataset) == 60
     assert dataset.get_image(0).size == (400, 500)
     assert dataset.get_mask_char(0).size == (400, 500)
     assert dataset.get_mask_line(0).size == (400, 500)
