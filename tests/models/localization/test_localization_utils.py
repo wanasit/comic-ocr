@@ -3,20 +3,6 @@ from comic_ocr.models.localization.localization_utils import divine_rect_into_ov
 from comic_ocr.types import Size
 
 
-def test_align_line_horizontal_on_good_align():
-    x = Rectangle.of_size(size=(55, 15), at=(520, 690))
-    y = Rectangle.of_size(size=(12, 15), at=(580, 690))
-    assert align_line_horizontal(x, y)
-    assert align_line_horizontal(y, x)
-
-
-def test_align_line_horizontal_on_overlap_horizontal():
-    x = Rectangle.of_size(size=(61, 15), at=(521, 690))
-    y = Rectangle.of_size(size=(12, 16), at=(580, 689))
-    assert align_line_horizontal(x, y)
-    assert align_line_horizontal(y, x)
-
-
 def test_divine_rect_into_overlapping_tiles():
     tiles = divine_rect_into_overlapping_tiles(
         rect=Size.of(100, 100), tile_size=Size.of(50, 50), min_overlap_x=10, min_overlap_y=10)

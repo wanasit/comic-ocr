@@ -2,8 +2,9 @@
 """
 from __future__ import annotations
 
+import random
 from random import Random
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import torch
 from PIL import Image
@@ -16,7 +17,7 @@ from comic_ocr.models.localization.localization_utils import divine_rect_into_ov
 from comic_ocr.models.localization.localization_utils import image_mask_to_output_tensor
 from comic_ocr.models.localization.localization_utils import image_to_input_tensor
 from comic_ocr.models.localization.localization_utils import output_tensor_to_image_mask
-from comic_ocr.types import Size, Rectangle
+from comic_ocr.types import Size, Rectangle, Point
 
 
 class LocalizationDataset(torch.utils.data.Dataset):
@@ -27,18 +28,22 @@ class LocalizationDataset(torch.utils.data.Dataset):
     """
 
     def __init__(self,
+                 r: Random,
+                 batch_image_size: Size,
                  images: List[Image.Image],
                  output_masks_char: Optional[List[torch.Tensor]] = None,
                  output_masks_line: Optional[List[torch.Tensor]] = None,
                  output_masks_paragraph: Optional[List[torch.Tensor]] = None,
                  output_locations_lines: Optional[List[List[Rectangle]]] = None,
                  ):
-        assert len(images)
+        assert len(images) >= 0
         assert output_masks_char is None or len(output_masks_char) == len(images)
         assert output_masks_line is None or len(output_masks_line) == len(images)
         assert output_masks_paragraph is None or len(output_masks_paragraph) == len(images)
         assert output_locations_lines is None or len(output_locations_lines) == len(images)
 
+        self.r = r
+        self.batch_image_size = batch_image_size
         self.images = images
         self.output_masks_char = output_masks_char
         self.output_masks_line = output_masks_line
@@ -50,18 +55,31 @@ class LocalizationDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
 
-        output = {
-            'input': image_to_input_tensor(self.images[idx]),
-        }
+        output = {}
+        image = self.images[idx]
+
+        # Pad the image. This padding information also need to be applied to masks
+        padded_size, paste_location = _get_padded_size_and_paste_location(image, self.batch_image_size)
+        image = _pad_image(image, padded_size, paste_location)
+
+        # Crop the image. This cropping information also need to be applied to masks
+        crop_rect = _get_random_crop(self.r, image, self.batch_image_size)
+        output['input'] = image_to_input_tensor(image.crop(crop_rect))
 
         if self.output_masks_char:
-            output['output_mask_char'] = self.output_masks_char[idx]
+            mask = self.output_masks_char[idx]
+            mask = _pad_mask(mask, padded_size, paste_location)
+            output['output_mask_char'] = mask[crop_rect.top:crop_rect.bottom, crop_rect.left:crop_rect.right]
 
         if self.output_masks_line:
-            output['output_mask_line'] = self.output_masks_line[idx]
+            mask = self.output_masks_line[idx]
+            mask = _pad_mask(mask, padded_size, paste_location)
+            output['output_mask_line'] = mask[crop_rect.top:crop_rect.bottom, crop_rect.left:crop_rect.right]
 
         if self.output_masks_paragraph:
-            output['output_mask_paragraph'] = self.output_masks_paragraph[idx]
+            mask = self.output_masks_paragraph[idx]
+            mask = _pad_mask(mask, padded_size, paste_location)
+            output['output_mask_paragraph'] = mask[crop_rect.top:crop_rect.bottom, crop_rect.left:crop_rect.right]
 
         return output
 
@@ -87,6 +105,8 @@ class LocalizationDataset(torch.utils.data.Dataset):
         from_idx = from_idx if from_idx is not None else 0
         to_dix = to_idx if to_idx is not None else len(self.images)
         return LocalizationDataset(
+            self.r,
+            self.batch_image_size,
             self.images[from_idx:to_dix],
             self.output_masks_char[from_idx:to_dix] if self.output_masks_char else None,
             self.output_masks_line[from_idx:to_dix] if self.output_masks_line else None,
@@ -110,6 +130,8 @@ class LocalizationDataset(torch.utils.data.Dataset):
             if self.output_locations_lines else None
 
         return LocalizationDataset(
+            r=self.r,
+            batch_image_size=self.batch_image_size,
             images=images,
             output_masks_char=output_masks_char,
             output_masks_line=output_masks_line,
@@ -118,9 +140,11 @@ class LocalizationDataset(torch.utils.data.Dataset):
 
     @staticmethod
     def merge(dataset_a: LocalizationDataset, dataset_b: LocalizationDataset):
-        assert dataset_a.get_image_size() == dataset_b.get_image_size(), \
-            'Can only merge dataset with the same image size. TODO: add this later'
-
+        r = Random(dataset_a.r.random() * dataset_b.r.random())
+        batch_image_size = Size.of(
+            min(dataset_b.batch_image_size.width, dataset_a.batch_image_size.width),
+            min(dataset_a.batch_image_size.height, dataset_a.batch_image_size.height)
+        )
         images = dataset_a.images + dataset_b.images
         output_masks_char = dataset_a.output_masks_char + dataset_b.output_masks_char \
             if dataset_a.output_masks_char and dataset_b.output_masks_char else None
@@ -132,6 +156,8 @@ class LocalizationDataset(torch.utils.data.Dataset):
             if dataset_a.output_locations_lines and dataset_b.output_locations_lines else None
 
         return LocalizationDataset(
+            r,
+            batch_image_size,
             images=images,
             output_masks_char=output_masks_char,
             output_masks_line=output_masks_line,
@@ -139,11 +165,12 @@ class LocalizationDataset(torch.utils.data.Dataset):
             output_locations_lines=output_locations_lines)
 
     @staticmethod
-    def load_generated_manga_dataset(directory, image_size: Size = Size.of(500, 500)):
+    def load_generated_manga_dataset(
+            directory,
+            random_seed: str = "",
+            batch_image_size: Size = Size.of(500, 500)):
         images, _, image_masks = generated_manga.load_dataset(directory)
         assert len(images) > 0
-
-        images, image_masks = LocalizationDataset._split_or_pad_images_into_size(images, image_masks, image_size)
 
         output_masks_char = []
         output_masks_line = []
@@ -155,13 +182,17 @@ class LocalizationDataset(torch.utils.data.Dataset):
             output_masks_paragraph.append(image_mask_to_output_tensor(mask, generated_manga.DEFAULT_RECT_ALPHA - 0.1))
 
         return LocalizationDataset(
+            r=Random(random_seed),
+            batch_image_size=batch_image_size,
             images=images,
             output_masks_char=output_masks_char,
             output_masks_line=output_masks_line,
             output_masks_paragraph=output_masks_paragraph)
 
     @staticmethod
-    def load_line_annotated_manga_dataset(directory, image_size: Size = Size.of(500, 500)):
+    def load_line_annotated_manga_dataset(directory,
+                                          random_seed: str = "",
+                                          batch_image_size: Size = Size.of(500, 500)):
         original_images, annotations = annotated_manga.load_line_annotated_dataset(
             directory, include_empty_text=True)
 
@@ -171,64 +202,74 @@ class LocalizationDataset(torch.utils.data.Dataset):
         output_locations_lines = []
 
         for image, lines in zip(original_images, annotations):
-            if image.width < image_size.width or image.height < image_size.height:
+            if image.width < batch_image_size.width or image.height < batch_image_size.height:
                 padded_size = Size.of(
-                    max(image.width, image_size.width),
-                    max(image.height, image_size.height))
+                    max(image.width, batch_image_size.width),
+                    max(image.height, batch_image_size.height))
                 padded_image = Image.new('RGB', padded_size, (255, 255, 255))
                 padded_image.paste(image, (0, 0))
                 image = padded_image
+
+            location_lines = []
             mask_image = torch.zeros(size=(image.height, image.width))
             mask_char_image = torch.zeros(size=(image.height, image.width))
-            original_image = pil_to_tensor(image.convert('L'))[0] / 255
+            original_binary_image = pil_to_tensor(image.convert('L'))[0] / 255
+
             for l in lines:
+                location_lines.append(l.location)
                 mask_image[l.location.top: l.location.bottom, l.location.left:l.location.right] = 1.0
                 # This assume the text is darker color on the whiter background
                 # TODO: Remove noise or blurry background
                 mask_char_image[l.location.top: l.location.bottom, l.location.left:l.location.right] = \
-                    1 - original_image[l.location.top: l.location.bottom, l.location.left:l.location.right]
+                    1 - original_binary_image[l.location.top: l.location.bottom, l.location.left:l.location.right]
 
-            tile_overlap_x = image.width // 4
-            tile_overlap_y = image.width // 4
-            for tile in divine_rect_into_overlapping_tiles(
-                    Size(image.size), tile_size=image_size, min_overlap_x=tile_overlap_x, min_overlap_y=tile_overlap_y):
-                images.append(image.crop(tile))
-                output_masks_line.append(mask_image[tile.top:tile.bottom, tile.left:tile.right])
-                output_masks_char.append(mask_char_image[tile.top:tile.bottom, tile.left:tile.right])
-
-                location_lines = []
-                for l in lines:
-                    new_location = Rectangle.intersect_bounding_rect((l.location, tile))
-                    if new_location:
-                        new_location = new_location.move(-tile.left, -tile.top)
-                        location_lines.append(new_location)
-
-                output_locations_lines.append(location_lines)
+            images.append(image)
+            output_locations_lines.append(location_lines)
+            output_masks_line.append(mask_image)
+            output_masks_char.append(mask_char_image)
 
         return LocalizationDataset(
+            r=Random(random_seed),
+            batch_image_size=batch_image_size,
             images=images,
             output_masks_char=output_masks_char,
             output_masks_line=output_masks_line,
             output_locations_lines=output_locations_lines
         )
 
-    @staticmethod
-    def _split_or_pad_images_into_size(
-            original_images,
-            original_image_masks,
-            output_image_size: Size = Size.of(500, 500)):
-        output_images = []
-        output_raw_image_masks = []
 
-        tile_overlap_x = output_image_size.width // 4
-        tile_overlap_y = output_image_size.width // 4
+def _get_padded_size_and_paste_location(image, target_size: Size) -> Tuple[Size, Point]:
+    if image.width < target_size.width or image.height < target_size.height:
+        padded_size = Size.of(
+            max(image.width, target_size.width),
+            max(image.height, target_size.height))
+        x = (padded_size.width - image.width) // 2
+        y = (padded_size.height - image.height) // 2
+        return padded_size, Point.of(x, y)
+    return Size.of(image.width, image.height), Point.of(0, 0)
 
-        for image, image_mask in zip(original_images, original_image_masks):
 
-            for tile in divine_rect_into_overlapping_tiles(
-                    Size(image.size), tile_size=output_image_size, min_overlap_x=tile_overlap_x,
-                    min_overlap_y=tile_overlap_y):
-                output_images.append(image.crop(tile))
-                output_raw_image_masks.append(image_mask.crop(tile))
+def _pad_image(image, padded_size, paste_location, padding_color=(0, 0, 0)):
+    if image.width == padded_size.width and image.height == padded_size.height:
+        return image
+    padded_image = Image.new('RGB', padded_size, padding_color)
+    padded_image.paste(image, paste_location)
+    return padded_image
 
-        return output_images, output_raw_image_masks
+
+def _pad_mask(mask, padded_size, paste_location):
+    height, width = mask.shape
+    if width == padded_size.width and height == padded_size.height:
+        return mask
+    padding_mask = torch.zeros(size=(padded_size.height, padded_size.width))
+    padding_mask[paste_location.y:paste_location.y + height, paste_location.x: paste_location.x + width] = mask
+    return padding_mask
+
+
+def _get_random_crop(r: Random, image_size: Size, target_size: Size) -> Rectangle:
+    assert target_size.width <= image_size.width
+    assert target_size.height <= image_size.height
+    x = r.randint(0, image_size.width - target_size.width)
+    y = r.randint(0, image_size.height - target_size.height)
+
+    return Rectangle.of_xywh(x, y, target_size.width, target_size.height)

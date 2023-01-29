@@ -18,6 +18,11 @@ def test_align_line_horizontal_positive_cases():
     assert localization_open_cv.align_line_horizontal(block_a, block_b)
     assert localization_open_cv.align_line_horizontal(block_b, block_a)
 
+    x = Rectangle.of_size(size=(55, 15), at=(520, 690))
+    y = Rectangle.of_size(size=(12, 15), at=(580, 690))
+    assert localization_open_cv.align_line_horizontal(x, y)
+    assert localization_open_cv.align_line_horizontal(y, x)
+
 
 def test_align_line_horizontal_negative_cases():
     block_a = Rectangle.of_xywh(10, 10, 10, 10)
@@ -52,6 +57,10 @@ def test_align_line_horizontal_when_overlap():
     assert localization_open_cv.align_line_horizontal(block_a, block_b)
     assert localization_open_cv.align_line_horizontal(block_b, block_a)
 
+    x = Rectangle.of_size(size=(61, 15), at=(521, 690))
+    y = Rectangle.of_size(size=(12, 16), at=(580, 689))
+    assert localization_open_cv.align_line_horizontal(x, y)
+    assert localization_open_cv.align_line_horizontal(y, x)
 
 def test_align_line_horizontal_when_overlap_vertically():
     block_a = Rectangle.of_xywh(20, 20, 100, 20)

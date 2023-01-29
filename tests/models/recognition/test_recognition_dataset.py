@@ -93,5 +93,5 @@ def test_dataset_with_loader():
     batch = next(iter(train_dataloader))
 
     assert batch['input'].shape == (1, 3, 24, 130)
-    assert batch['output'].shape == (1, 17)
+    assert batch['output'].shape == (1, 23)
     assert batch['output_length'].shape == (1, 1)

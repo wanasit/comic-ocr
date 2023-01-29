@@ -45,7 +45,7 @@ def train(
             epoch_training_total_loss = 0
             epoch_training_total_count = 0
 
-            training_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+            training_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
             for batch in training_dataloader:
                 step_counter += 1
                 optimizer.zero_grad()
@@ -101,7 +101,7 @@ if __name__ == '__main__':
         model = ConvUnet()
 
     path_dataset = get_path_project_dir('data/manga_line_annotated')
-    dataset = LocalizationDataset.load_line_annotated_manga_dataset(path_dataset, image_size=model.preferred_image_size)
+    dataset = LocalizationDataset.load_line_annotated_manga_dataset(path_dataset, batch_image_size=model.preferred_image_size)
     print(f'Loaded dataset of size {len(dataset)}...')
 
     def update(epoch, training_losses, validation_metrics):
