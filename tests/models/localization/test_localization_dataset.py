@@ -62,6 +62,26 @@ def test_load_generated_manga_dataset_with_resize(tmpdir):
     assert batch['output_mask_paragraph'].shape == (2, 200, 200)
 
 
+def test_with_resize(tmpdir):
+    dataset_dir = get_path_example_dir('manga_annotated')
+    dataset = LocalizationDataset.load_line_annotated_manga_dataset(dataset_dir, batch_image_size=Size.of(400, 500))
+    assert len(dataset) == 5
+
+    dataset = dataset.with_batch_image_size(Size.of(500, 500))
+    assert len(dataset) == 5
+    assert dataset.get_image(0).size == (707, 1000)
+    assert dataset.get_mask_char(0).size == (707, 1000)
+    assert dataset.get_mask_line(0).size == (707, 1000)
+    assert len(dataset.get_line_locations(0)) > 0
+
+    train_dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=1)
+    batch = next(iter(train_dataloader))
+
+    assert batch['input'].shape == (2, 3, 500, 500)
+    assert batch['output_mask_char'].shape == (2, 500, 500)
+    assert batch['output_mask_line'].shape == (2, 500, 500)
+
+
 def test_merge_annotated_generated_dataset():
     dataset_annotated = LocalizationDataset.load_line_annotated_manga_dataset(
         get_path_example_dir('manga_annotated'), batch_image_size=Size.of(500, 500))
