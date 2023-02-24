@@ -12,7 +12,7 @@ from comic_ocr.models.localization import localization_open_cv as cv
 from comic_ocr.models.localization.localization_utils import image_to_input_tensor, output_tensor_to_image_mask
 from comic_ocr.types import Size, Rectangle
 
-DEFAULT_LOSS_CRITERION_CHAR = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([2]))
+DEFAULT_LOSS_CRITERION_CHAR = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([0.5]))
 DEFAULT_LOSS_CRITERION_LINE = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([0.5]))
 
 
@@ -61,7 +61,7 @@ class LocalizationModel(nn.Module):
         loss = torch.zeros(1)
         if 'output_mask_char' in dataset_batch:
             output = dataset_batch['output_mask_char'].float()
-            loss += loss_criterion_for_char(output_char, output)
+            loss += loss_criterion_for_char(output_char, output) * 2
 
         if 'output_mask_line' in dataset_batch:
             output = dataset_batch['output_mask_line'].float()

@@ -32,7 +32,7 @@ def locate_paragraphs_in_character_mask(
 
 def locate_lines_in_character_mask(
         input_tensor: Union[np.ndarray, torch.Tensor],
-        input_threshold: float = 0.40,
+        input_threshold: float = 0.50,
         expand_detected_component: Tuple[int, int] = (2, 1),
         expand_detected_line: Tuple[int, int] = (2, 2),
         debugging: bool = False

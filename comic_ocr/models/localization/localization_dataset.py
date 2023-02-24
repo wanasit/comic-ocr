@@ -13,7 +13,6 @@ from torchvision.transforms.functional import pil_to_tensor
 
 from comic_ocr.dataset import annotated_manga
 from comic_ocr.dataset import generated_manga
-from comic_ocr.models.localization.localization_utils import divine_rect_into_overlapping_tiles
 from comic_ocr.models.localization.localization_utils import image_mask_to_output_tensor
 from comic_ocr.models.localization.localization_utils import image_to_input_tensor
 from comic_ocr.models.localization.localization_utils import output_tensor_to_image_mask
@@ -143,7 +142,7 @@ class LocalizationDataset(torch.utils.data.Dataset):
         r = Random(dataset_a.r.random() * dataset_b.r.random())
         batch_image_size = Size.of(
             min(dataset_b.batch_image_size.width, dataset_a.batch_image_size.width),
-            min(dataset_a.batch_image_size.height, dataset_a.batch_image_size.height)
+            min(dataset_b.batch_image_size.height, dataset_a.batch_image_size.height)
         )
         images = dataset_a.images + dataset_b.images
         output_masks_char = dataset_a.output_masks_char + dataset_b.output_masks_char \
@@ -218,10 +217,12 @@ class LocalizationDataset(torch.utils.data.Dataset):
             for l in lines:
                 location_lines.append(l.location)
                 mask_image[l.location.top: l.location.bottom, l.location.left:l.location.right] = 1.0
-                # This assume the text is darker color on the whiter background
-                # TODO: Remove noise or blurry background
-                mask_char_image[l.location.top: l.location.bottom, l.location.left:l.location.right] = \
-                    1 - original_binary_image[l.location.top: l.location.bottom, l.location.left:l.location.right]
+                # This assumes the text is darker color on the whiter background
+                line_image = original_binary_image[l.location.top: l.location.bottom, l.location.left:l.location.right]
+                avg_pixel_value = (line_image.sum() / l.location.width / l.location.height)
+                line_image = line_image < avg_pixel_value
+                line_image = line_image.float()
+                mask_char_image[l.location.top: l.location.bottom, l.location.left:l.location.right] = line_image
 
             images.append(image)
             output_locations_lines.append(location_lines)

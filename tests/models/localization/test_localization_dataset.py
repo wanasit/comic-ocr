@@ -1,3 +1,4 @@
+import numpy as np
 from torch.utils.data import DataLoader
 
 from comic_ocr.dataset import generated_manga
@@ -15,12 +16,16 @@ def test_load_line_annotated_manga_dataset():
     assert dataset.get_mask_line(0).size == (707, 1000)
     assert len(dataset.get_line_locations(0)) > 0
 
+    dataset.get_mask_char(0).show()
+
     train_dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=1)
     batch = next(iter(train_dataloader))
 
     assert batch['input'].shape == (2, 3, 500, 400)
     assert batch['output_mask_line'].shape == (2, 500, 400)
     assert batch['output_mask_char'].shape == (2, 500, 400)
+    assert set(np.unique(batch['output_mask_line'].numpy())) == {0.0, 1.0}
+    assert set(np.unique(batch['output_mask_char'].numpy())) == {0.0, 1.0}
 
 
 def test_load_generated_manga_dataset():
