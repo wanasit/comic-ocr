@@ -16,7 +16,7 @@ def test_load_line_annotated_manga_dataset():
     assert dataset.get_mask_line(0).size == (707, 1000)
     assert len(dataset.get_line_locations(0)) > 0
 
-    dataset.get_mask_char(0).show()
+    # dataset.get_mask_char(0).show()
 
     train_dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=1)
     batch = next(iter(train_dataloader))
