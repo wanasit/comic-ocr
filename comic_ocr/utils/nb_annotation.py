@@ -54,10 +54,11 @@ def lines_from_nb_annotation_data(
         empty_text: Optional[str] = None
 ) -> List[Line]:
     lines = []
-    for a in annotation_data['annotations']:
-        line = line_from_nb_annotation(a, empty_text=empty_text)
-        if line:
-            lines.append(line)
+    if 'annotations' in annotation_data:
+        for a in annotation_data['annotations']:
+            line = line_from_nb_annotation(a, empty_text=empty_text)
+            if line:
+                lines.append(line)
 
     return lines
 

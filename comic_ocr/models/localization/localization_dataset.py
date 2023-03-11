@@ -178,7 +178,7 @@ class LocalizationDataset(torch.utils.data.Dataset):
             directory,
             random_seed: str = "",
             batch_image_size: SizeLike = Size.of(500, 500)):
-        images, _, image_masks = generated_manga.load_dataset(directory)
+        images, image_texts, image_masks = generated_manga.load_dataset(directory)
         assert len(images) > 0
 
         output_masks_char = []
@@ -190,18 +190,24 @@ class LocalizationDataset(torch.utils.data.Dataset):
             output_masks_line.append(image_mask_to_output_tensor(mask, generated_manga.DEFAULT_LINE_ALPHA - 0.1))
             output_masks_paragraph.append(image_mask_to_output_tensor(mask, generated_manga.DEFAULT_RECT_ALPHA - 0.1))
 
+        output_line_locations = []
+        for lines in image_texts:
+            output_line_locations.append([l.location for l in lines])
+
         return LocalizationDataset(
             r=Random(random_seed),
             batch_image_size=Size(batch_image_size),
             images=images,
             output_masks_char=output_masks_char,
             output_masks_line=output_masks_line,
-            output_masks_paragraph=output_masks_paragraph)
+            output_masks_paragraph=output_masks_paragraph,
+            output_line_locations=output_line_locations)
 
     @staticmethod
     def load_line_annotated_manga_dataset(directory,
                                           random_seed: str = "",
                                           batch_image_size: SizeLike = Size.of(500, 500)):
+        batch_image_size = Size(batch_image_size)
         original_images, annotations = annotated_manga.load_line_annotated_dataset(
             directory, include_empty_text=True)
 
@@ -241,7 +247,7 @@ class LocalizationDataset(torch.utils.data.Dataset):
 
         return LocalizationDataset(
             r=Random(random_seed),
-            batch_image_size=Size(batch_image_size),
+            batch_image_size=batch_image_size,
             images=images,
             output_masks_char=output_masks_char,
             output_masks_line=output_masks_line,

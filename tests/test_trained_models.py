@@ -4,6 +4,7 @@ from comic_ocr import Rectangle
 from comic_ocr.models import localization
 from comic_ocr.types import Size
 from comic_ocr.utils.files import load_image, get_path_project_dir
+from comic_ocr.utils import image_with_annotations
 
 
 def test_trained_localization_model_high_level_metrics():
@@ -26,10 +27,9 @@ def test_trained_model_localize_paragraphs():
     image = load_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))
 
     paragraphs = comic_ocr.localize_paragraphs(image)
-    assert len(paragraphs) == 3
-
     paragraph_locations = [l for l, _ in paragraphs]
     # image_with_annotations(image, paragraph_locations).show()
+    assert len(paragraph_locations) == 3
     assert paragraph_locations[0].can_represent(Rectangle.of_size((87, 16), at=(309, 459)))
     assert paragraph_locations[1].can_represent(Rectangle.of_size((95, 20), at=(333, 715)))
     assert paragraph_locations[2].can_represent(Rectangle.of_size((108, 28), at=(473, 945)))

@@ -10,7 +10,7 @@ from comic_ocr.models.recognition.recognition_model import RecognitionModel, ima
 
 # TODO: Remove this
 # Ref: https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+#os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 class CRNN(RecognitionModel):

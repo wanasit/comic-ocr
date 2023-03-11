@@ -12,8 +12,14 @@ from comic_ocr.models.localization import localization_open_cv as cv
 from comic_ocr.models.localization.localization_utils import image_to_input_tensor, output_tensor_to_image_mask
 from comic_ocr.types import Size, Rectangle
 
-DEFAULT_LOSS_CRITERION_CHAR = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([0.5]))
-DEFAULT_LOSS_CRITERION_LINE = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([0.5]))
+
+def WeightedBCEWithLogitsLoss(weight: float, pos_weight: float):
+    bce_loss = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([pos_weight]))
+    return lambda y_pred, y: bce_loss(y_pred, y) * weight
+
+
+DEFAULT_LOSS_CRITERION_CHAR = WeightedBCEWithLogitsLoss(pos_weight=0.5, weight=2.0)
+DEFAULT_LOSS_CRITERION_LINE = WeightedBCEWithLogitsLoss(pos_weight=0.5, weight=1.0)
 
 
 class LocalizationModel(nn.Module):
@@ -61,7 +67,7 @@ class LocalizationModel(nn.Module):
         loss = torch.zeros(1)
         if 'output_mask_char' in dataset_batch:
             output = dataset_batch['output_mask_char'].float()
-            loss += loss_criterion_for_char(output_char, output) * 2
+            loss += loss_criterion_for_char(output_char, output)
 
         if 'output_mask_line' in dataset_batch:
             output = dataset_batch['output_mask_line'].float()
@@ -69,13 +75,13 @@ class LocalizationModel(nn.Module):
 
         return loss
 
-    def locate_paragraphs(self, image) -> List[Tuple[Rectangle, List[Rectangle]]]:
+    def locate_paragraphs(self, image, threshold=0.5) -> List[Tuple[Rectangle, List[Rectangle]]]:
         output, _ = self._create_output_mask(image)
-        return cv.locate_paragraphs_in_character_mask(output)
+        return cv.locate_paragraphs_in_character_mask(output, input_threshold=threshold)
 
-    def locate_lines(self, image) -> List[Rectangle]:
+    def locate_lines(self, image, threshold=0.5) -> List[Rectangle]:
         output, _ = self._create_output_mask(image)
-        return cv.locate_lines_in_character_mask(output)
+        return cv.locate_lines_in_character_mask(output, input_threshold=threshold)
 
     def create_output_marks(self, image) -> Tuple[Image.Image, Image.Image]:
         output_char, output_line = self._create_output_mask(image)
@@ -90,19 +96,40 @@ class LocalizationModel(nn.Module):
         return torch.sigmoid(output_char[0]), torch.sigmoid(output_line[0])
 
 
+class BasicLocalizationModel(LocalizationModel):
+    """A basic implementation for the LocalizationModel to be used for testing.
+
+    The model transform the input into the two outputs by two conv2d layers.
+    """
+
+    def __init__(self, kernel_size=1, stride=1):
+        super(BasicLocalizationModel, self).__init__()
+        self.output_conv_char = nn.Conv2d(3, 1, kernel_size=kernel_size, stride=stride)
+        self.output_conv_line = nn.Conv2d(3, 1, kernel_size=kernel_size, stride=stride)
+
+    def forward(self, x):
+        y_char = self.output_conv_char(x)
+        y_line = self.output_conv_line(x)
+        return y_char[:, 0, :], y_line[:, 0, :]
+
+    def reset_parameters(self):
+        self.output_conv_char.reset_parameters()
+        self.output_conv_line.reset_parameters()
+
+
 if __name__ == '__main__':
-    from comic_ocr.models.localization.conv_unet.conv_unet import ConvUnet
     from comic_ocr.utils import image_with_annotations, concatenated_images
     from comic_ocr.utils.files import load_image, get_path_project_dir
 
-    path_output_model = get_path_project_dir('data/output/models/localization.bin')
+    path_output_model = get_path_project_dir('data/output/models/localization_base.bin')
+    # path_output_model = ''
 
     if os.path.exists(path_output_model):
         print('Loading an existing model...')
         model = torch.load(path_output_model)
     else:
         print('Creating a new model...')
-        model = ConvUnet()
+        model = BasicLocalizationModel()
 
     # example = load_image(get_path_project_dir('example/manga_generated/image/0001.jpg'))
     example = load_image(get_path_project_dir('example/manga_annotated/normal_01.jpg'))

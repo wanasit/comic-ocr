@@ -11,8 +11,8 @@ include = ["trained_models/*.*"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-torch = "^1.11.0"
-torchvision = "^0.12.0"
+torch = "^1.12.1"
+torchvision = "^0.13.1"
 opencv-python = "^4.5.4.60"
 numpy = "^1.21"
 Pillow = "^9.1"
@@ -24,6 +24,8 @@ pytest = "^7"
 jupyter = "*"
 matplotlib = "*"
 labelling-notebook = "*"
+tensorboard = "*"
+coverage = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

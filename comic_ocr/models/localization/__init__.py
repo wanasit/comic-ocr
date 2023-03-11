@@ -5,16 +5,16 @@ or implementation details (both Pytorch/ML or OpenCV).
 
 """
 import logging
-from typing import Iterable
+from typing import Iterable, Optional
 
 import torch
 
 from comic_ocr.types import Rectangle
-from comic_ocr.models.localization.localization_model import LocalizationModel
+from comic_ocr.models.localization.localization_model import LocalizationModel, BasicLocalizationModel
 from comic_ocr.models.localization.localization_dataset import LocalizationDataset
 from comic_ocr.utils.files import PathLike, get_path_project_dir, load_image
 
-DEFAULT_TRAINED_MODEL_FILE = get_path_project_dir('trained_models/localization.bin')
+DEFAULT_TRAINED_MODEL_FILE = get_path_project_dir('data/output/models/localization_base.bin')
 DEFAULT_EXAMPLE_IMAGE = get_path_project_dir('example/manga_annotated/normal_01.jpg')
 
 logger = logging.getLogger(__name__)
@@ -30,8 +30,8 @@ def load_or_create_new_model(model_file: PathLike = DEFAULT_TRAINED_MODEL_FILE) 
 
 
 def create_new_model() -> LocalizationModel:
-    from comic_ocr.models.localization.conv_unet.conv_unet import ConvUnet
-    return ConvUnet()
+    from comic_ocr.models.localization.conv_unet import conv_unet
+    return conv_unet.BaselineConvUnet()
 
 
 def load_model(
@@ -51,18 +51,21 @@ def load_model(
 
 def calculate_high_level_metrics(
         model: LocalizationModel,
-        dataset: LocalizationDataset
+        dataset: LocalizationDataset,
+        sample_size_limit: Optional[int] = None
 ):
     """
     Calculate understandable high-level metrics (e.g. accuracy for locating lines).
     """
     assert len(dataset) > 0
-    assert dataset.output_locations_lines, 'Requires dataset with line locations information'
+    assert dataset.output_line_locations, 'Requires dataset with line locations information'
     total_tp = 0
     total_fp = 0
     total_fn = 0
 
     for i in range(len(dataset)):
+        if sample_size_limit and i >= sample_size_limit:
+            break
         baseline_line_locations = dataset.get_line_locations(i)
         line_locations = model.locate_lines(dataset.get_image(i))
         tp, fp, fn = match_location_rectangles_with_baseline(line_locations, baseline_line_locations)
@@ -72,7 +75,7 @@ def calculate_high_level_metrics(
         total_fn += fn
 
     return {
-        "dataset_size": len(dataset),
+        "sample_size": i,
         "total_line_level_true_positive": total_tp,
         "total_line_level_false_positive": total_fp,
         "total_line_level_false_negative": total_fn,
