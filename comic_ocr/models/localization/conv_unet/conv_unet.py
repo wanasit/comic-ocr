@@ -1,5 +1,6 @@
 import os
 from abc import abstractmethod
+from typing import Any, Tuple
 
 import torch
 from torch import nn
@@ -28,7 +29,7 @@ class AbstractConvUnet(LocalizationModel):
             nn.Conv2d(hidden_size_output_line, 1, kernel_size=1),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, Any]:
         down_outputs = [x]
         for i, layer in enumerate(self.down_layers):
             down = layer(down_outputs[i])
@@ -45,7 +46,7 @@ class AbstractConvUnet(LocalizationModel):
 
         y_char = self.output_conv_char(y)
         y_line = self.output_conv_line(y)
-        return y_char[:, 0, :], y_line[:, 0, :]
+        return y_char[:, 0, :], y_line[:, 0, :], None
 
 
 class BaselineConvUnet(AbstractConvUnet):
@@ -170,7 +171,7 @@ if __name__ == '__main__':
                                                                     batch_image_size=model.preferred_image_size)
 
     # try predicting
-    output_char, output_mask = model(dataset[0]['input'].unsqueeze(0))
+    output_char, output_mask, _ = model(dataset[0]['input'].unsqueeze(0))
 
     # try loss calculation
     train_dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=1)

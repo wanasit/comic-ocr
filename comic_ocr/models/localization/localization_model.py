@@ -2,11 +2,11 @@
 """
 
 import os
-from typing import Callable, Tuple, List
+from typing import Callable, Tuple, List, Any
 
 import torch
 from PIL import Image
-from torch import nn, Tensor
+from torch import nn
 
 from comic_ocr.models.localization import localization_open_cv as cv
 from comic_ocr.models.localization.localization_utils import image_to_input_tensor, output_tensor_to_image_mask
@@ -39,15 +39,16 @@ class LocalizationModel(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, input_images: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, Any]:
         """Computes character and line probability marks for the input image.
 
         Args:
-            input_images (Tensor[?, C=3, H, W]): the input image
+            x (torch.Tensor[?, C=3, H, W]): the input image
 
         Returns:
-            output_mask_character (Tensor[?, H, W]): The return value. True for success, False otherwise.
-            output_mask_line (Tensor[?, H, W]):
+            output_mask_character (torch.Tensor[?, H, W]): The predict probability mask for characters
+            output_mask_line (torch.Tensor[?, H, W]): The predict probability mask for lines
+            other_output: Other output used by the implementation classes.
         """
         raise NotImplementedError
 
@@ -60,9 +61,9 @@ class LocalizationModel(nn.Module):
             dataset_batch,
             loss_criterion_for_char=DEFAULT_LOSS_CRITERION_CHAR,
             loss_criterion_for_line=DEFAULT_LOSS_CRITERION_LINE
-    ) -> Tensor:
+    ) -> torch.Tensor:
         input = dataset_batch['input']
-        output_char, output_line = self(input)
+        output_char, output_line, _ = self(input)
 
         loss = torch.zeros(1)
         if 'output_mask_char' in dataset_batch:
@@ -88,10 +89,10 @@ class LocalizationModel(nn.Module):
 
         return output_tensor_to_image_mask(output_char), output_tensor_to_image_mask(output_line)
 
-    def _create_output_mask(self, image) -> Tuple[Tensor, Tensor]:
+    def _create_output_mask(self, image) -> Tuple[torch.Tensor, torch.Tensor]:
         with torch.no_grad():
             input_tensor = image_to_input_tensor(image).unsqueeze(0)
-            output_char, output_line = self(input_tensor)
+            output_char, output_line, _ = self(input_tensor)
 
         return torch.sigmoid(output_char[0]), torch.sigmoid(output_line[0])
 
@@ -107,10 +108,10 @@ class BasicLocalizationModel(LocalizationModel):
         self.output_conv_char = nn.Conv2d(3, 1, kernel_size=kernel_size, stride=stride)
         self.output_conv_line = nn.Conv2d(3, 1, kernel_size=kernel_size, stride=stride)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, Any]:
         y_char = self.output_conv_char(x)
         y_line = self.output_conv_line(x)
-        return y_char[:, 0, :], y_line[:, 0, :]
+        return y_char[:, 0, :], y_line[:, 0, :], None
 
     def reset_parameters(self):
         self.output_conv_char.reset_parameters()
