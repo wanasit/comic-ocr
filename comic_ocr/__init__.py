@@ -1,5 +1,6 @@
 from typing import List, Tuple, Optional
 
+from comic_ocr import hub
 from comic_ocr.models import localization
 from comic_ocr.models import recognition
 from comic_ocr.types import Rectangle, Paragraph, Line, ImageInput, to_image_rgb
@@ -43,18 +44,20 @@ def localize_paragraphs(image: ImageInput) -> List[Tuple[Rectangle, List[Rectang
     return model.locate_paragraphs(image)
 
 
-def get_localization_model() -> localization.LocalizationModel:
+def get_localization_model(show_download_progress=True, force_reload=False) -> localization.LocalizationModel:
     global _localization_model
     if not _localization_model:
-        _localization_model = localization.load_model()
+        _localization_model = hub.download_localization_model(
+            progress=show_download_progress, force_reload=force_reload, test_executing_model=True)
 
     return _localization_model
 
 
-def get_recognition_model() -> recognition.RecognitionModel:
+def get_recognition_model(show_download_progress=True, force_reload=False) -> recognition.RecognitionModel:
     global _recognition_model
     if not _recognition_model:
-        _recognition_model = recognition.load_model()
+        _recognition_model = hub.download_recognition_model(
+            progress=show_download_progress, force_reload=force_reload, test_executing_model=True)
 
     return _recognition_model
 

@@ -12,12 +12,12 @@ from comic_ocr.models.recognition.recognition_model import RecognitionModel, SUP
 from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset
 from comic_ocr.utils.files import PathLike, get_path_project_dir
 
-DEFAULT_TRAINED_MODEL_FILE = get_path_project_dir('trained_models/recognition.bin')
+DEFAULT_LOCAL_TRAINED_MODEL_FILE = get_path_project_dir('trained_models/recognition.pth')
 
 logger = logging.getLogger(__name__)
 
 
-def load_or_create_new_model(model_file: PathLike = DEFAULT_TRAINED_MODEL_FILE) -> RecognitionModel:
+def load_or_create_new_model(model_file: PathLike = DEFAULT_LOCAL_TRAINED_MODEL_FILE) -> RecognitionModel:
     try:
         model = load_model(model_file)
         model()
@@ -33,7 +33,7 @@ def create_new_model(**kwargs) -> RecognitionModel:
 
 
 def load_model(
-        model_file: PathLike = DEFAULT_TRAINED_MODEL_FILE,
+        model_file: PathLike = DEFAULT_LOCAL_TRAINED_MODEL_FILE,
         test_executing_model: bool = True
 ) -> RecognitionModel:
     logger.info(f'Loading localization model [{model_file}]')

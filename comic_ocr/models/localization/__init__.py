@@ -14,13 +14,13 @@ from comic_ocr.models.localization.localization_model import LocalizationModel, 
 from comic_ocr.models.localization.localization_dataset import LocalizationDataset
 from comic_ocr.utils.files import PathLike, get_path_project_dir, load_image
 
-DEFAULT_TRAINED_MODEL_FILE = get_path_project_dir('trained_models/localization.bin')
+DEFAULT_LOCAL_TRAINED_MODEL_FILE = get_path_project_dir('trained_models/localization.pth')
 DEFAULT_EXAMPLE_IMAGE = get_path_project_dir('example/manga_annotated/normal_01.jpg')
 
 logger = logging.getLogger(__name__)
 
 
-def load_or_create_new_model(model_file: PathLike = DEFAULT_TRAINED_MODEL_FILE) -> LocalizationModel:
+def load_or_create_new_model(model_file: PathLike = DEFAULT_LOCAL_TRAINED_MODEL_FILE) -> LocalizationModel:
     try:
         model = load_model(model_file, test_executing_model=True)
         return model
@@ -35,7 +35,7 @@ def create_new_model() -> LocalizationModel:
 
 
 def load_model(
-        model_file: PathLike = DEFAULT_TRAINED_MODEL_FILE,
+        model_file: PathLike = DEFAULT_LOCAL_TRAINED_MODEL_FILE,
         test_executing_model: bool = True
 ) -> LocalizationModel:
     logger.info(f'Loading localization model [{model_file}]')
