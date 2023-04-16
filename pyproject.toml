@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "comic-ocr"
-version = "0.1.3"
+version = "0.1.4"
 description = "An OCR library comic and manga"
 authors = ["Wanasit T"]
 license = "MIT License"
 packages = [
     { include = "comic_ocr" },
 ]
-include = []
+include = ["example/manga_annotated/xkcd_100.jpg"]
 
 [tool.poetry.dependencies]
 python = "^3.8"

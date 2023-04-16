@@ -15,7 +15,7 @@ from comic_ocr.models.localization.localization_dataset import LocalizationDatas
 from comic_ocr.utils.files import PathLike, get_path_project_dir, load_image
 
 DEFAULT_LOCAL_TRAINED_MODEL_FILE = get_path_project_dir('trained_models/localization.pth')
-DEFAULT_EXAMPLE_IMAGE = get_path_project_dir('example/manga_annotated/normal_01.jpg')
+DEFAULT_EXAMPLE_IMAGE = get_path_project_dir('example/manga_annotated/xkcd_100.jpg')
 
 logger = logging.getLogger(__name__)
 
