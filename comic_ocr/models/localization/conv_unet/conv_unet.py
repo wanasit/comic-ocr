@@ -1,14 +1,12 @@
-import os
-from abc import abstractmethod
 from typing import Any, Tuple
 
 import torch
 from torch import nn
 
 import torch.nn.functional as F
+import torchvision.models
 
 from comic_ocr.models.localization.localization_model import LocalizationModel
-from comic_ocr.utils.files import load_images
 
 
 class AbstractConvUnet(LocalizationModel):
@@ -156,6 +154,45 @@ class DoubleConvWithSecondInput(nn.Module):
         return x
 
 
+class ResNetUnet(AbstractConvUnet):
+    def __init__(self, **kwargs):
+        super(ResNetUnet, self).__init__(transformed_channel_size=128 + 3,
+                                         hidden_size_output_char=16, hidden_size_output_line=16, **kwargs)
+        # Pretrained ResNet18
+        self.base_model = torchvision.models.resnet18(pretrained=True)
+        self.base_layers = list(self.base_model.children())
+
+        layer = nn.Sequential(*self.base_layers[:3])
+        layer.append(nn.Conv2d(64, 64, kernel_size=1))
+        layer.append(nn.ReLU(inplace=True))
+        self.down_layers.append(layer)  # L1 output: [N, 64, H/2, W/2]
+
+        layer = nn.Sequential(*self.base_layers[3:5])
+        layer.append(nn.Conv2d(64, 64, kernel_size=1))
+        layer.append(nn.ReLU(inplace=True))
+        self.down_layers.append(layer)  # L2 output: [N, 64, H/2, W/2]
+
+        layer = nn.Sequential(self.base_layers[5])
+        layer.append(nn.Conv2d(128, 128, kernel_size=1))
+        layer.append(nn.ReLU(inplace=True))
+        self.down_layers.append(layer)  # L3 output: [N, 128, H/2, W/2]
+
+        layer = nn.Sequential(self.base_layers[6])
+        layer.append(nn.Conv2d(256, 256, kernel_size=1))
+        layer.append(nn.ReLU(inplace=True))
+        self.down_layers.append(layer)  # L4 output: [N, 128, H/2, W/2]
+
+        layer = nn.Sequential(self.base_layers[7])
+        layer.append(nn.Conv2d(512, 512, kernel_size=1))
+        layer.append(nn.ReLU(inplace=True))
+        self.down_layers.append(layer)  # L5 output: [N, 128, H/2, W/2]
+
+        self.up_layers.append(DoubleConvWithSecondInput(512, 256, num_output_channel=512))
+        self.up_layers.append(DoubleConvWithSecondInput(512, 128, num_output_channel=256))
+        self.up_layers.append(DoubleConvWithSecondInput(256, 64, num_output_channel=256))
+        self.up_layers.append(DoubleConvWithSecondInput(256, 64, num_output_channel=128))
+
+
 if __name__ == '__main__':
     from torchvision import models
     from comic_ocr.utils.pytorch_model import get_total_parameters_count
@@ -163,7 +200,7 @@ if __name__ == '__main__':
     from comic_ocr.utils import get_path_project_dir
     from torch.utils.data import DataLoader
 
-    model = WideStrideConvUnet()
+    model = ResNetUnet()
     print(get_total_parameters_count(model))
 
     path_dataset = get_path_project_dir('data/manga_line_annotated')
