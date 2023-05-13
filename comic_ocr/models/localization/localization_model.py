@@ -13,13 +13,31 @@ from comic_ocr.models.localization.localization_utils import image_to_input_tens
 from comic_ocr.types import Size, Rectangle
 
 
-def WeightedBCEWithLogitsLoss(weight: float, pos_weight: float):
-    bce_loss = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([pos_weight]))
-    return lambda y_pred, y: bce_loss(y_pred, y) * weight
+class WeightedBCEWithLogitsLoss(nn.Module):
+    def __init__(self, weight=1.0, pos_weight=1.0):
+        super().__init__()
+        self.bce_loss = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([pos_weight]))
+        self.weight = weight
+
+    def forward(self, y_pred, y):
+        return self.bce_loss(y_pred, y) * self.weight
 
 
-DEFAULT_LOSS_CRITERION_CHAR = WeightedBCEWithLogitsLoss(pos_weight=0.5, weight=2.0)
-DEFAULT_LOSS_CRITERION_LINE = WeightedBCEWithLogitsLoss(pos_weight=0.5, weight=1.0)
+class WeightedDiceLoss(nn.Module):
+    def __init__(self, weight=1.0, smooth=1):
+        super().__init__()
+        self.smooth = smooth
+        self.weight = weight
+
+    def forward(self, y_pred, y):
+        y_pred = torch.sigmoid(y_pred)
+        intersection = (y_pred * y).sum()
+        dice = (2. * intersection + self.smooth) / (y_pred.sum() + y.sum() + self.smooth)
+        return (1 - dice) * self.weight
+
+
+DEFAULT_LOSS_CRITERION_CHAR = WeightedDiceLoss(weight=1.0)
+DEFAULT_LOSS_CRITERION_LINE = WeightedDiceLoss(weight=0.2)
 
 
 class LocalizationModel(nn.Module):

@@ -91,7 +91,8 @@ def train(
                 loss = model.compute_loss(
                     batch,
                     loss_criterion_for_char=loss_criterion_for_char,
-                    loss_criterion_for_line=loss_criterion_for_line)
+                    loss_criterion_for_line=loss_criterion_for_line,
+                    device=train_device)
 
                 # Step loss / optimizer / lr_scheduler
                 loss.backward()
@@ -131,6 +132,7 @@ def train(
 
 
 def _validate_model(metrics, model, dataset, batch_size, sample_size_limit=None):
+    model = model.cpu()
     loss = _calculate_avg_loss(model, dataset, batch_size=batch_size, sample_size_limit=sample_size_limit)
     metrics['loss'].append(loss)
     if dataset.output_line_locations:

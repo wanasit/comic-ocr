@@ -1,5 +1,26 @@
 from comic_ocr import Rectangle
+from comic_ocr.dataset import generated_manga
 from comic_ocr.models.localization import localization_open_cv
+from comic_ocr.models.localization import localization_utils
+from comic_ocr.utils import files
+
+
+def test_locate_lines_in_character_mask():
+    example_generated_dataset_dir = files.get_path_example_dir('manga_generated')
+    _, image_texts, image_masks = generated_manga.load_dataset(example_generated_dataset_dir)
+
+    image_mask = image_masks[0]
+    lines = image_texts[0]
+
+    output_tensor = localization_utils.image_mask_to_output_tensor(image_mask)
+    located_lines = localization_open_cv.locate_lines_in_character_mask(output_tensor)
+
+    assert len(lines) == len(located_lines)
+    lines = sorted(lines, key=lambda l: l.location.top)
+    located_lines = sorted(located_lines, key=lambda l: l.top)
+
+    for i in range(len(lines)):
+        assert lines[i].location in located_lines[i]
 
 
 def test_align_line_horizontal_positive_cases():
@@ -61,6 +82,7 @@ def test_align_line_horizontal_when_overlap():
     y = Rectangle.of_size(size=(12, 16), at=(580, 689))
     assert localization_open_cv.align_line_horizontal(x, y)
     assert localization_open_cv.align_line_horizontal(y, x)
+
 
 def test_align_line_horizontal_when_overlap_vertically():
     block_a = Rectangle.of_xywh(20, 20, 100, 20)
