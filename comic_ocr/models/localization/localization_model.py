@@ -2,7 +2,7 @@
 """
 
 import os
-from typing import Callable, Tuple, List, Any
+from typing import Callable, Tuple, List, Any, Optional
 
 import torch
 from PIL import Image
@@ -80,40 +80,62 @@ class LocalizationModel(nn.Module):
             self,
             dataset_batch,
             loss_criterion_for_char=DEFAULT_LOSS_CRITERION_CHAR,
-            loss_criterion_for_line=DEFAULT_LOSS_CRITERION_LINE
+            loss_criterion_for_line=DEFAULT_LOSS_CRITERION_LINE,
+            device: Optional[torch.device] = None
     ) -> torch.Tensor:
-        input = dataset_batch['input']
-        output_char, output_line, _ = self(input)
 
-        loss = torch.zeros(1)
+        input = dataset_batch['input']
+        if device is None:
+            self.to(device)
+            input = input.to(device)
+
+        output_char, output_line, _ = self(input)
+        loss = torch.zeros(1, device=device)
         if 'output_mask_char' in dataset_batch:
             output = dataset_batch['output_mask_char'].float()
+            output = output.to(device) if device else output
             loss += loss_criterion_for_char(output_char, output)
 
         if 'output_mask_line' in dataset_batch:
             output = dataset_batch['output_mask_line'].float()
+            output = output.to(device) if device else output
             loss += loss_criterion_for_line(output_line, output)
 
         return loss
 
-    def locate_paragraphs(self, image, threshold=0.5) -> List[Tuple[Rectangle, List[Rectangle]]]:
-        output, _ = self._create_output_mask(image)
+    def locate_paragraphs(
+            self,
+            image: Image.Image,
+            threshold: float = 0.5,
+            device: Optional[torch.device] = None
+    ) -> List[Tuple[Rectangle, List[Rectangle]]]:
+        output, _ = self._create_prob_output_masks(image, device=device)
         return cv.locate_paragraphs_in_character_mask(output, input_threshold=threshold)
 
-    def locate_lines(self, image, threshold=0.5) -> List[Rectangle]:
-        output, _ = self._create_output_mask(image)
+    def locate_lines(
+            self,
+            image: Image.Image,
+            threshold: float = 0.5,
+            device: Optional[torch.device] = None
+    ) -> List[Rectangle]:
+        output, _ = self._create_prob_output_masks(image, device=device)
         return cv.locate_lines_in_character_mask(output, input_threshold=threshold)
 
-    def create_output_marks(self, image) -> Tuple[Image.Image, Image.Image]:
-        output_char, output_line = self._create_output_mask(image)
-
+    def create_output_marks(self, image, device: Optional[torch.device] = None) -> Tuple[Image.Image, Image.Image]:
+        output_char, output_line = self._create_prob_output_masks(image, device=device)
         return output_tensor_to_image_mask(output_char), output_tensor_to_image_mask(output_line)
 
-    def _create_output_mask(self, image) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _create_prob_output_masks(
+            self,
+            image: Image.Image,
+            device: Optional[torch.device] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         with torch.no_grad():
             input_tensor = image_to_input_tensor(image).unsqueeze(0)
+            if device is None:
+                self.to(device)
+                input_tensor = input_tensor.to(device)
             output_char, output_line, _ = self(input_tensor)
-
         return torch.sigmoid(output_char[0]), torch.sigmoid(output_line[0])
 
 

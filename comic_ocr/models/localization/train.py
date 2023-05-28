@@ -40,7 +40,9 @@ def train(
         model: localization_model.LocalizationModel,
         train_dataset: LocalizationDataset,
         train_epoch_count: int = 20,
+        train_device: Optional[torch.device] = None,
         validate_dataset: Optional[LocalizationDataset] = None,
+        validate_device: Optional[torch.device] = None,
         update_callback: Optional[UpdateCallback] = None,
         update_every_n: Optional[int] = 20,
         update_validate_sample_size: Optional[int] = None,
@@ -91,7 +93,8 @@ def train(
                 loss = model.compute_loss(
                     batch,
                     loss_criterion_for_char=loss_criterion_for_char,
-                    loss_criterion_for_line=loss_criterion_for_line)
+                    loss_criterion_for_line=loss_criterion_for_line,
+                    device=train_device)
 
                 # Step loss / optimizer / lr_scheduler
                 loss.backward()
@@ -130,12 +133,13 @@ def train(
     return training_metrics, validation_metrics
 
 
-def _validate_model(metrics, model, dataset, batch_size, sample_size_limit=None):
+def _validate_model(metrics, model, dataset, batch_size, sample_size_limit=None, device: Optional[torch.device] = None):
     model = model.cpu()
-    loss = _calculate_avg_loss(model, dataset, batch_size=batch_size, sample_size_limit=sample_size_limit)
+    loss = _calculate_avg_loss(model, dataset, batch_size=batch_size, sample_size_limit=sample_size_limit,
+                               device=device)
     metrics['loss'].append(loss)
     if dataset.output_line_locations:
-        new_metrics = calculate_high_level_metrics(model, dataset, sample_size_limit=sample_size_limit)
+        new_metrics = calculate_high_level_metrics(model, dataset, sample_size_limit=sample_size_limit, device=device)
         for k in new_metrics:
             metrics[k].append(new_metrics[k])
 
@@ -144,7 +148,8 @@ def _calculate_avg_loss(
         model: localization_model.LocalizationModel,
         dataset: LocalizationDataset,
         batch_size: int,
-        sample_size_limit: Optional[int] = None) -> float:
+        sample_size_limit: Optional[int] = None,
+        device: Optional[torch.device] = None) -> float:
     sample_size_limit = sample_size_limit if sample_size_limit else len(dataset)
     dataset = dataset if sample_size_limit >= len(dataset) else dataset.shuffle().subset(to_idx=sample_size_limit)
 
@@ -152,7 +157,7 @@ def _calculate_avg_loss(
     with torch.no_grad():
         valid_dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=0)
         for i_batch, batch in enumerate(valid_dataloader):
-            loss = model.compute_loss(batch)
+            loss = model.compute_loss(batch, device=device)
             total_loss += loss.item()
 
     return total_loss / sample_size_limit
