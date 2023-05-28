@@ -21,12 +21,12 @@ def test_weighted_bce_loss():
 
 
 def test_weighted_dice_loss():
-    loss = localization_model.WeightedDiceLoss(0.5)
+    loss = localization_model.WeightedDiceLoss(0.5, apply_sigmoid_to_y_pred=False)
 
     y = torch.tensor([[0.0, 1.0, 0.0], [1.0, 0.0, 1.0], [0.0, 1.0, 0.0]])
     assert loss(y, y) == 0.0
     assert loss(y, torch.zeros_like(y)) > 0.0
     assert loss(y, torch.ones_like(y)) > 0.0
 
-    half_loss = localization_model.WeightedDiceLoss(0.25)
+    half_loss = localization_model.WeightedDiceLoss(0.25, apply_sigmoid_to_y_pred=False)
     assert loss(y, torch.zeros_like(y)) == half_loss(y, torch.zeros_like(y)) * 2

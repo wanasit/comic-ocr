@@ -24,13 +24,15 @@ class WeightedBCEWithLogitsLoss(nn.Module):
 
 
 class WeightedDiceLoss(nn.Module):
-    def __init__(self, weight=1.0, smooth=1):
+    def __init__(self, weight=1.0, smooth=1, apply_sigmoid_to_y_pred=True):
         super().__init__()
         self.smooth = smooth
         self.weight = weight
+        self.apply_sigmoid_to_y_pred = apply_sigmoid_to_y_pred
 
     def forward(self, y_pred, y):
-        y_pred = torch.sigmoid(y_pred)
+        if self.apply_sigmoid_to_y_pred:
+            y_pred = torch.sigmoid(y_pred)
         intersection = (y_pred * y).sum()
         dice = (2. * intersection + self.smooth) / (y_pred.sum() + y.sum() + self.smooth)
         return (1 - dice) * self.weight

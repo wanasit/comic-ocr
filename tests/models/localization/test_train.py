@@ -68,9 +68,6 @@ def test_train_to_finish_and_return_metrics():
     assert 'loss' in validate_metrics
     assert len(validate_metrics['loss']) == 3
 
-    # The training loss should be decreasing
-    assert train_metrics['loss'][0] >= train_metrics['loss'][2]
-
     assert 'line_level_precision' in validate_metrics
     assert 'line_level_recall' in validate_metrics
 

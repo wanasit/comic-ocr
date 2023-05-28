@@ -91,8 +91,7 @@ def train(
                 loss = model.compute_loss(
                     batch,
                     loss_criterion_for_char=loss_criterion_for_char,
-                    loss_criterion_for_line=loss_criterion_for_line,
-                    device=train_device)
+                    loss_criterion_for_line=loss_criterion_for_line)
 
                 # Step loss / optimizer / lr_scheduler
                 loss.backward()
