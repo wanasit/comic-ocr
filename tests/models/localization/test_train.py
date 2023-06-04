@@ -166,7 +166,8 @@ def test_train_and_validate_on_gpu():
           update_callback=callback,
           tqdm_enable=False,
           tensorboard_log_enable=False,
-          train_device=torch.device('cuda:0'))
+          train_device=torch.device('cuda:0'),
+          validate_device=torch.device('cuda:0'))
 
     train('testing_model_with_meta_validate_device', model,
           train_dataset=dataset,
@@ -177,4 +178,5 @@ def test_train_and_validate_on_gpu():
           update_callback=callback,
           tqdm_enable=False,
           tensorboard_log_enable=False,
+          train_device=torch.device('cpu'),
           validate_device=torch.device('cuda:0'))

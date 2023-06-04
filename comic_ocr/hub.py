@@ -24,6 +24,8 @@ def download_localization_model(
         test_executing_model: bool = True) -> localization.LocalizationModel:
     file_name = 'localization.pth'
     cached_file = os.path.join(torch.hub.get_dir(), file_name)
+    if not os.path.exists(torch.hub.get_dir()):
+        os.makedirs(torch.hub.get_dir())
     if force_reload or not os.path.exists(cached_file):
         logger.info(f'Downloading "{url}" to "{cached_file}"...')
         torch.hub.download_url_to_file(url, cached_file, progress=progress)

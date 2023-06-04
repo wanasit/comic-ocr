@@ -84,12 +84,12 @@ class LocalizationModel(nn.Module):
             device: Optional[torch.device] = None
     ) -> torch.Tensor:
 
-        input = dataset_batch['input']
-        if device is None:
+        input_tensor = dataset_batch['input']
+        if device is not None:
             self.to(device)
-            input = input.to(device)
+            input_tensor = input_tensor.to(device)
 
-        output_char, output_line, _ = self(input)
+        output_char, output_line, _ = self(input_tensor)
         loss = torch.zeros(1, device=device)
         if 'output_mask_char' in dataset_batch:
             output = dataset_batch['output_mask_char'].float()

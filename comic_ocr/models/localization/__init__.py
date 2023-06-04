@@ -52,7 +52,8 @@ def load_model(
 def calculate_high_level_metrics(
         model: LocalizationModel,
         dataset: LocalizationDataset,
-        sample_size_limit: Optional[int] = None
+        sample_size_limit: Optional[int] = None,
+        device: Optional[torch.device] = None
 ):
     """
     Calculate understandable high-level metrics (e.g. accuracy for locating lines).
@@ -67,7 +68,7 @@ def calculate_high_level_metrics(
         if sample_size_limit and i >= sample_size_limit:
             break
         baseline_line_locations = dataset.get_line_locations(i)
-        line_locations = model.locate_lines(dataset.get_image(i))
+        line_locations = model.locate_lines(dataset.get_image(i), device=device)
         tp, fp, fn = match_location_rectangles_with_baseline(line_locations, baseline_line_locations)
         tp, fp, fn = len(tp), len(fp), len(fn)
         total_tp += tp

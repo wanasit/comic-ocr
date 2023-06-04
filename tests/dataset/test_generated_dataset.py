@@ -17,7 +17,7 @@ def test_text_area():
     text_area = TextArea(xy, text=text, font=font, max_width=200)
 
     assert text_area.text_rect.tl == xy
-    assert text_area.text_rect.width == 204
+    assert 199 <= text_area.text_rect.width <= 205 # in Linux this font rendered differently
     assert text_area.text_rect.height == 79
 
     assert len(text_area.text_lines) == 3
@@ -47,7 +47,7 @@ def test_text_area_draw_text_rect():
     xy = Point.of(5, 5)
     text_area = TextArea(xy, text=text, font=font, max_width=200)
     assert len(text_area.text_lines) == 3
-    assert text_area.text_rect == Rectangle.of_size((204, 79), at=xy)
+    assert Rectangle.jaccard_similarity(Rectangle.of_size((204, 79), at=xy), text_area.text_rect) >= 0.9
 
     # when draw_text_rect()
     image = Image.new('RGBA', size=(300, 100), color='#000000ff')
@@ -73,7 +73,7 @@ def test_text_area_draw_line_rects():
     xy = Point.of(5, 5)
     text_area = TextArea(xy, text=text, font=font, max_width=200)
     assert len(text_area.text_lines) == 3
-    assert text_area.text_rect == Rectangle.of_size((204, 79), at=xy)
+    assert Rectangle.jaccard_similarity(Rectangle.of_size((204, 79), at=xy), text_area.text_rect) >= 0.9
 
     image = Image.new('RGB', size=(300, 100), color=(0, 0, 0))
     fill_value_text_rect = 255 // 5
@@ -114,7 +114,7 @@ def test_text_area_draw_text():
     xy = Point.of(5, 5)
     text_area = TextArea(xy, text=text, font=font, max_width=200)
     assert len(text_area.text_lines) == 3
-    assert text_area.text_rect == Rectangle.of_size((204, 79), at=xy)
+    assert Rectangle.jaccard_similarity(Rectangle.of_size((204, 79), at=xy), text_area.text_rect) >= 0.9
 
     image = Image.new('RGB', size=(300, 100), color=(0, 0, 0))
     fill_value_text_rect = 255 // 5
