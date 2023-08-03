@@ -15,7 +15,7 @@ class AbstractConvUnet(LocalizationModel):
                  hidden_size_output_char=16,
                  hidden_size_output_line=16,
                  **kwargs):
-        super(AbstractConvUnet, self).__init__()
+        super(AbstractConvUnet, self).__init__(**kwargs)
         self.down_layers = nn.ModuleList()
         self.up_layers = nn.ModuleList()
         self.output_conv_char = nn.Sequential(

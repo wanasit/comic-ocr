@@ -56,8 +56,9 @@ class LocalizationModel(nn.Module):
     image input, computes the probability via the model, and uses heuristic OpenCV techniques to identify the lines.
     """
 
-    def __init__(self):
+    def __init__(self, preferred_image_size: Optional[Size] = None):
         super().__init__()
+        self._preferred_image_size = preferred_image_size
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, Any]:
         """Computes character and line probability marks for the input image.
@@ -74,6 +75,8 @@ class LocalizationModel(nn.Module):
 
     @property
     def preferred_image_size(self) -> Size:
+        if self._preferred_image_size is not None:
+            return self._preferred_image_size
         return Size.of(500, 500)
 
     def compute_loss(
