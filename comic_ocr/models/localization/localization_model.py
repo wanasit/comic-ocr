@@ -82,8 +82,8 @@ class LocalizationModel(nn.Module):
     def compute_loss(
             self,
             dataset_batch,
-            loss_criterion_for_char=DEFAULT_LOSS_CRITERION_CHAR,
-            loss_criterion_for_line=DEFAULT_LOSS_CRITERION_LINE,
+            loss_criterion_for_char: Optional[Callable] = DEFAULT_LOSS_CRITERION_CHAR,
+            loss_criterion_for_line: Optional[Callable] = DEFAULT_LOSS_CRITERION_LINE,
             device: Optional[torch.device] = None
     ) -> torch.Tensor:
 

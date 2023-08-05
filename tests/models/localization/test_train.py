@@ -45,11 +45,11 @@ def test_save_on_increasing_validate_metric(tmpdir):
     assert model_hash != hash_file(model_path)
 
 
-def test_train_to_finish_and_retun_mretrics():
+def test_train_to_finish_and_return_metrics():
     model = localization.BasicLocalizationModel()
     assert model.preferred_image_size == (500, 500)
 
-    dataset = localization.LocalizationDataset.load_line_annotated_manga_dataset(
+    dataset = localization.LocalizationDatasetWithAugmentation.load_line_annotated_manga_dataset(
         files.get_path_project_dir('example/manga_annotated'),
         batch_image_size=model.preferred_image_size)
     dataset = dataset.subset(0, 4)
@@ -77,7 +77,7 @@ def test_train_to_send_update_callback():
     model = localization.BasicLocalizationModel()
     assert model.preferred_image_size == (500, 500)
 
-    dataset = localization.LocalizationDataset.load_line_annotated_manga_dataset(
+    dataset = localization.LocalizationDatasetWithAugmentation.load_line_annotated_manga_dataset(
         files.get_path_project_dir('example/manga_annotated'),
         batch_image_size=model.preferred_image_size)
     dataset = dataset.subset(0, 4)
@@ -107,7 +107,7 @@ def test_train_and_validate_on_cpu():
     model = localization.BasicLocalizationModel()
     assert model.preferred_image_size == (500, 500)
 
-    dataset = localization.LocalizationDataset.load_line_annotated_manga_dataset(
+    dataset = localization.LocalizationDatasetWithAugmentation.load_line_annotated_manga_dataset(
         files.get_path_project_dir('example/manga_annotated'),
         batch_image_size=model.preferred_image_size)
     dataset = dataset.subset(0, 4)
@@ -147,7 +147,7 @@ def test_train_and_validate_on_gpu():
     model = localization.BasicLocalizationModel()
     assert model.preferred_image_size == (500, 500)
 
-    dataset = localization.LocalizationDataset.load_line_annotated_manga_dataset(
+    dataset = localization.LocalizationDatasetWithAugmentation.load_line_annotated_manga_dataset(
         files.get_path_project_dir('example/manga_annotated'),
         batch_image_size=model.preferred_image_size)
     dataset = dataset.subset(0, 4)

@@ -11,7 +11,7 @@ import torch
 
 from comic_ocr.types import Rectangle
 from comic_ocr.models.localization.localization_model import LocalizationModel, BasicLocalizationModel
-from comic_ocr.models.localization.localization_dataset import LocalizationDataset
+from comic_ocr.models.localization.localization_dataset import LocalizationDataset, LocalizationDatasetWithAugmentation
 from comic_ocr.utils.files import PathLike, get_path_project_dir, load_image
 
 DEFAULT_LOCAL_TRAINED_MODEL_FILE = get_path_project_dir('trained_models/localization.pth')
