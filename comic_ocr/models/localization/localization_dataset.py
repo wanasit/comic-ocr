@@ -42,69 +42,71 @@ class LocalizationDataset(torch.utils.data.Dataset):
         assert output_masks_paragraph is None or len(output_masks_paragraph) == len(images)
         assert output_line_locations is None or len(output_line_locations) == len(images)
 
-        self.images = images
-        self.output_masks_char = output_masks_char
-        self.output_masks_line = output_masks_line
-        self.output_masks_paragraph = output_masks_paragraph
-        self.output_line_locations = output_line_locations
+        self._images = images
+        self._output_masks_char = output_masks_char
+        self._output_masks_line = output_masks_line
+        self._output_masks_paragraph = output_masks_paragraph
+        self._output_line_locations = output_line_locations
 
     def __len__(self):
-        return len(self.images)
+        return len(self._images)
 
     def __getitem__(self, idx):
         output = dict()
-        output['input'] = image_to_input_tensor(self.images[idx])
-        if self.output_masks_char:
-            output['output_mask_char'] = self.output_masks_char[idx]
-        if self.output_masks_line:
-            output['output_mask_line'] = self.output_masks_line[idx]
-        if self.output_masks_paragraph:
-            output['output_mask_paragraph'] = self.output_masks_paragraph[idx]
+        output['input'] = image_to_input_tensor(self._images[idx])
+        if self._output_masks_char:
+            output['output_mask_char'] = self._output_masks_char[idx]
+        if self._output_masks_line:
+            output['output_mask_line'] = self._output_masks_line[idx]
+        if self._output_masks_paragraph:
+            output['output_mask_paragraph'] = self._output_masks_paragraph[idx]
         return output
 
     def loader(self, **kwargs):
+        kwargs.pop('batch_size', None)
+        kwargs.pop('num_workers', None)
         return torch.utils.data.DataLoader(self, batch_size=1, num_workers=0, **kwargs)
 
     def get_image(self, idx) -> Image.Image:
-        return self.images[idx]
+        return self._images[idx]
 
     def get_mask_char(self, idx) -> Image.Image:
-        return output_tensor_to_image_mask(self.output_masks_char[idx]) if self.output_masks_char else None
+        return output_tensor_to_image_mask(self._output_masks_char[idx]) if self._output_masks_char else None
 
     def get_mask_line(self, idx) -> Image.Image:
-        return output_tensor_to_image_mask(self.output_masks_line[idx]) if self.output_masks_line else None
+        return output_tensor_to_image_mask(self._output_masks_line[idx]) if self._output_masks_line else None
 
     def get_mask_paragraph(self, idx) -> Image.Image:
-        return output_tensor_to_image_mask(self.output_masks_paragraph[idx]) if self.output_masks_paragraph else None
+        return output_tensor_to_image_mask(self._output_masks_paragraph[idx]) if self._output_masks_paragraph else None
 
     def get_line_locations(self, idx) -> List[Rectangle]:
-        return self.output_line_locations[idx] if self.output_line_locations else None
+        return self._output_line_locations[idx] if self._output_line_locations else None
 
     def subset(self, from_idx: Optional[int] = None, to_idx: Optional[int] = None) -> LocalizationDataset:
         from_idx = from_idx if from_idx is not None else 0
-        to_dix = to_idx if to_idx is not None else len(self.images)
+        to_dix = to_idx if to_idx is not None else len(self._images)
         return LocalizationDataset(
-            self.images[from_idx:to_dix],
-            self.output_masks_char[from_idx:to_dix] if self.output_masks_char else None,
-            self.output_masks_line[from_idx:to_dix] if self.output_masks_line else None,
-            self.output_masks_paragraph[from_idx:to_dix] if self.output_masks_paragraph else None,
-            self.output_line_locations[from_idx:to_dix] if self.output_line_locations else None
+            self._images[from_idx:to_dix],
+            self._output_masks_char[from_idx:to_dix] if self._output_masks_char else None,
+            self._output_masks_line[from_idx:to_dix] if self._output_masks_line else None,
+            self._output_masks_paragraph[from_idx:to_dix] if self._output_masks_paragraph else None,
+            self._output_line_locations[from_idx:to_dix] if self._output_line_locations else None
         )
 
     def shuffle(self, random_seed: any = '') -> LocalizationDataset:
-        indexes = list(range(len(self.images)))
+        indexes = list(range(len(self._images)))
         r = Random(random_seed)
         r.shuffle(indexes)
 
-        images = [self.images[i] for i in indexes]
-        output_masks_char = [self.output_masks_char[i] for i in indexes] \
-            if self.output_masks_char else None
-        output_masks_line = [self.output_masks_line[i] for i in indexes] \
-            if self.output_masks_line else None
-        output_masks_paragraph = [self.output_masks_paragraph[i] for i in indexes] \
-            if self.output_masks_paragraph else None
-        output_location_lines = [self.output_line_locations[i] for i in indexes] \
-            if self.output_line_locations else None
+        images = [self._images[i] for i in indexes]
+        output_masks_char = [self._output_masks_char[i] for i in indexes] \
+            if self._output_masks_char else None
+        output_masks_line = [self._output_masks_line[i] for i in indexes] \
+            if self._output_masks_line else None
+        output_masks_paragraph = [self._output_masks_paragraph[i] for i in indexes] \
+            if self._output_masks_paragraph else None
+        output_location_lines = [self._output_line_locations[i] for i in indexes] \
+            if self._output_line_locations else None
 
         return LocalizationDataset(
             images=images,
@@ -115,15 +117,15 @@ class LocalizationDataset(torch.utils.data.Dataset):
 
     @staticmethod
     def merge(dataset_a: LocalizationDataset, dataset_b: LocalizationDataset):
-        images = dataset_a.images + dataset_b.images
-        output_masks_char = dataset_a.output_masks_char + dataset_b.output_masks_char \
-            if dataset_a.output_masks_char and dataset_b.output_masks_char else None
-        output_masks_line = dataset_a.output_masks_line + dataset_b.output_masks_line \
-            if dataset_a.output_masks_line and dataset_b.output_masks_line else None
-        output_masks_paragraph = dataset_a.output_masks_paragraph + dataset_b.output_masks_paragraph \
-            if dataset_a.output_masks_paragraph and dataset_b.output_masks_paragraph else None
-        output_locations_lines = dataset_a.output_line_locations + dataset_b.output_line_locations \
-            if dataset_a.output_line_locations and dataset_b.output_line_locations else None
+        images = dataset_a._images + dataset_b._images
+        output_masks_char = dataset_a._output_masks_char + dataset_b._output_masks_char \
+            if dataset_a._output_masks_char and dataset_b._output_masks_char else None
+        output_masks_line = dataset_a._output_masks_line + dataset_b._output_masks_line \
+            if dataset_a._output_masks_line and dataset_b._output_masks_line else None
+        output_masks_paragraph = dataset_a._output_masks_paragraph + dataset_b._output_masks_paragraph \
+            if dataset_a._output_masks_paragraph and dataset_b._output_masks_paragraph else None
+        output_locations_lines = dataset_a._output_line_locations + dataset_b._output_line_locations \
+            if dataset_a._output_line_locations and dataset_b._output_line_locations else None
 
         return LocalizationDataset(
             images=images,
@@ -218,36 +220,27 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
 
     def __init__(self, r: Random, batch_image_size: SizeLike, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.r = r
-        self.batch_image_size = Size(batch_image_size)
+        self._r = r
+        self._batch_image_size = Size(batch_image_size)
+        self._image_tensors = [image_to_input_tensor(i) for i in self._images]
 
     def __getitem__(self, idx):
         output = {}
-        image = self.images[idx]
 
-        # Pad the image. This padding information also need to be applied to masks
-        padded_size, paste_location = _get_padded_size_and_paste_location(image, self.batch_image_size)
-        image = _pad_image(image, padded_size, paste_location)
+        # Crop the image.
+        crop_rect = _get_random_crop(self._r, self._images[idx], self._batch_image_size)
+        output['input'] = _apply_crop_to_image(self._image_tensors[idx], crop_rect, padded_size=self._batch_image_size)
 
-        # Crop the image. This cropping information also need to be applied to masks
-        crop_rect = _get_random_crop(self.r, image, self.batch_image_size)
-        output['input'] = image_to_input_tensor(image.crop(crop_rect))
-
-        if self.output_masks_char:
-            mask = self.output_masks_char[idx]
-            mask = _pad_mask(mask, padded_size, paste_location)
-            output['output_mask_char'] = mask[crop_rect.top:crop_rect.bottom, crop_rect.left:crop_rect.right]
-
-        if self.output_masks_line:
-            mask = self.output_masks_line[idx]
-            mask = _pad_mask(mask, padded_size, paste_location)
-            output['output_mask_line'] = mask[crop_rect.top:crop_rect.bottom, crop_rect.left:crop_rect.right]
-
-        if self.output_masks_paragraph:
-            mask = self.output_masks_paragraph[idx]
-            mask = _pad_mask(mask, padded_size, paste_location)
-            output['output_mask_paragraph'] = mask[crop_rect.top:crop_rect.bottom, crop_rect.left:crop_rect.right]
-
+        # Apply the same cropping to masks
+        if self._output_masks_char:
+            output['output_mask_char'] = _apply_crop_to_mask(
+                self._output_masks_char[idx], crop_rect, padded_size=self._batch_image_size)
+        if self._output_masks_line:
+            output['output_mask_line'] = _apply_crop_to_mask(
+                self._output_masks_line[idx], crop_rect, padded_size=self._batch_image_size)
+        if self._output_masks_paragraph:
+            output['output_mask_paragraph'] = _apply_crop_to_mask(
+                self._output_masks_paragraph[idx], crop_rect, padded_size=self._batch_image_size)
         return output
 
     def loader(self, *args, **kwargs):
@@ -257,23 +250,23 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
                to_idx: Optional[int] = None) -> LocalizationDatasetWithAugmentation:
         subset = super().subset(from_idx, to_idx)
         return LocalizationDatasetWithAugmentation.of_dataset(subset,
-                                                              r=self.r,
-                                                              batch_image_size=self.batch_image_size)
+                                                              r=self._r,
+                                                              batch_image_size=self._batch_image_size)
 
     def shuffle(self, random_seed: any = '') -> LocalizationDatasetWithAugmentation:
         shuffled = super().shuffle(random_seed)
         return LocalizationDatasetWithAugmentation.of_dataset(shuffled,
-                                                              r=self.r,
-                                                              batch_image_size=self.batch_image_size)
+                                                              r=self._r,
+                                                              batch_image_size=self._batch_image_size)
 
     def with_batch_image_size(self, batch_image_size: SizeLike) -> LocalizationDatasetWithAugmentation:
         return LocalizationDatasetWithAugmentation.of_dataset(self, batch_image_size=batch_image_size)
 
     def without_augmentation(self) -> LocalizationDataset:
-        return LocalizationDataset(images=self.images,
-                                   output_masks_char=self.output_masks_char,
-                                   output_masks_line=self.output_masks_line,
-                                   output_line_locations=self.output_line_locations)
+        return LocalizationDataset(images=self._images,
+                                   output_masks_char=self._output_masks_char,
+                                   output_masks_line=self._output_masks_line,
+                                   output_line_locations=self._output_line_locations)
 
     @staticmethod
     def of_dataset(dataset: LocalizationDataset,
@@ -284,11 +277,11 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
         return LocalizationDatasetWithAugmentation(
             r=r,
             batch_image_size=batch_image_size,
-            images=dataset.images,
-            output_masks_char=dataset.output_masks_char,
-            output_masks_line=dataset.output_masks_line,
-            output_masks_paragraph=dataset.output_masks_paragraph,
-            output_line_locations=dataset.output_line_locations
+            images=dataset._images,
+            output_masks_char=dataset._output_masks_char,
+            output_masks_line=dataset._output_masks_line,
+            output_masks_paragraph=dataset._output_masks_paragraph,
+            output_line_locations=dataset._output_line_locations
         )
 
     @staticmethod
@@ -296,10 +289,10 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
             dataset_a: LocalizationDatasetWithAugmentation,
             dataset_b: LocalizationDatasetWithAugmentation
     ) -> LocalizationDatasetWithAugmentation:
-        r = Random(dataset_a.r.random() * dataset_b.r.random())
+        r = Random(dataset_a._r.random() * dataset_b._r.random())
         batch_image_size = Size.of(
-            min(dataset_b.batch_image_size.width, dataset_a.batch_image_size.width),
-            min(dataset_b.batch_image_size.height, dataset_a.batch_image_size.height)
+            min(dataset_b._batch_image_size.width, dataset_a._batch_image_size.width),
+            min(dataset_b._batch_image_size.height, dataset_a._batch_image_size.height)
         )
 
         merged_dataset = LocalizationDataset.merge(dataset_a, dataset_b)
@@ -342,24 +335,33 @@ def _get_padded_size_and_paste_location(image, target_size: Size) -> Tuple[Size,
     return Size.of(image.width, image.height), Point.of(0, 0)
 
 
-def _pad_image(image, padded_size, paste_location, padding_color=(0, 0, 0)):
-    if image.width == padded_size.width and image.height == padded_size.height:
-        return image
-    padded_image = Image.new('RGB', padded_size, padding_color)
-    padded_image.paste(image, paste_location)
-    return padded_image
+def _apply_crop_to_mask(mask: torch.Tensor, crop_rect: Rectangle, padded_size: Size) -> torch.Tensor:
+    assert len(mask.shape) == 2
+    if crop_rect.width == padded_size.width and crop_rect.height == padded_size.height:
+        return mask[crop_rect.top:crop_rect.bottom, crop_rect.left:crop_rect.right]
+
+    padding_image = torch.zeros(size=(padded_size.height, padded_size.width))
+    y_offset = (padded_size.height - crop_rect.height) // 2
+    x_offset = (padded_size.width - crop_rect.width) // 2
+    padding_image[y_offset:y_offset + crop_rect.height, x_offset:x_offset + crop_rect.width] = \
+        mask[crop_rect.top:crop_rect.bottom, crop_rect.left:crop_rect.right]
+    return padding_image
 
 
-def _pad_mask(mask, padded_size, paste_location):
-    height, width = mask.shape
-    if width == padded_size.width and height == padded_size.height:
-        return mask
-    padding_mask = torch.zeros(size=(padded_size.height, padded_size.width))
-    padding_mask[paste_location.y:paste_location.y + height, paste_location.x: paste_location.x + width] = mask
-    return padding_mask
+def _apply_crop_to_image(image: torch.Tensor, crop_rect: Rectangle, padded_size: Size) -> torch.Tensor:
+    assert len(image.shape) == 3
+    if crop_rect.width == padded_size.width and crop_rect.height == padded_size.height:
+        return image[:, crop_rect.top:crop_rect.bottom, crop_rect.left:crop_rect.right]
+
+    padding_image = torch.zeros(size=(image.shape[0], padded_size.height, padded_size.width))
+    y_offset = (padded_size.height - crop_rect.height) // 2
+    x_offset = (padded_size.width - crop_rect.width) // 2
+    padding_image[:, y_offset:y_offset + crop_rect.height, x_offset:x_offset + crop_rect.width] = \
+        image[:, crop_rect.top:crop_rect.bottom, crop_rect.left:crop_rect.right]
+    return padding_image
 
 
-def _get_random_crop(r: Random, image_size: Size, target_size: Size) -> Rectangle:
+def _get_random_crop(r: Random, image_size: Size | Image, target_size: Size) -> Rectangle:
     assert target_size.width <= image_size.width
     assert target_size.height <= image_size.height
     x = r.randint(0, image_size.width - target_size.width)

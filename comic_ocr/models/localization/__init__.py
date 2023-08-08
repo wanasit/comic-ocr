@@ -59,7 +59,7 @@ def calculate_high_level_metrics(
     Calculate understandable high-level metrics (e.g. accuracy for locating lines).
     """
     assert len(dataset) > 0
-    assert dataset.output_line_locations, 'Requires dataset with line locations information'
+    assert dataset._output_line_locations, 'Requires dataset with line locations information'
     total_tp = 0
     total_fp = 0
     total_fn = 0

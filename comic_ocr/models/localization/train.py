@@ -84,7 +84,7 @@ def train(
     for i_epoch in range(train_epoch_count):
         with tqdm(total=len(train_dataset), disable=(not tqdm_enable)) as tepoch:
             tepoch.set_description(f"Epoch {i_epoch}")
-            training_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+            training_dataloader = train_dataset.loader(batch_size=batch_size, shuffle=True)
             for batch in training_dataloader:
                 step_counter += 1
 
@@ -138,7 +138,7 @@ def _validate_model(metrics, model, dataset, batch_size, sample_size_limit=None,
     loss = _calculate_avg_loss(model, dataset, batch_size=batch_size, sample_size_limit=sample_size_limit,
                                device=device)
     metrics['loss'].append(loss)
-    if dataset.output_line_locations:
+    if len(dataset) > 0 and len(dataset.get_line_locations(0)) > 0:
         new_metrics = calculate_high_level_metrics(model, dataset, sample_size_limit=sample_size_limit, device=device)
         for k in new_metrics:
             metrics[k].append(new_metrics[k])
@@ -155,7 +155,7 @@ def _calculate_avg_loss(
 
     total_loss = 0
     with torch.no_grad():
-        valid_dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=0)
+        valid_dataloader = dataset.loader(batch_size=batch_size, num_workers=0)
         for i_batch, batch in enumerate(valid_dataloader):
             loss = model.compute_loss(batch, device=device)
             total_loss += loss.item()
@@ -163,7 +163,7 @@ def _calculate_avg_loss(
     return total_loss / sample_size_limit
 
 
-if __name__ == '__main__':
+def _run_example():
     from comic_ocr.models.localization.conv_unet import conv_unet
 
     model_name = 'test_training_localization'
@@ -181,11 +181,9 @@ if __name__ == '__main__':
 
     save_model = save_on_increasing_validate_metric(model, model_path, 'line_level_precision')
 
-
     def update(epoch, training_losses, validation_metrics):
         print('Update')
         save_model(epoch, training_losses, validation_metrics)
-
 
     validation_dataset = dataset.subset(to_idx=2)
     training_dataset = dataset.subset(from_idx=2)
@@ -196,3 +194,7 @@ if __name__ == '__main__':
           batch_size=3,
           update_every_n=1,
           train_epoch_count=1)
+
+
+if __name__ == '__main__':
+    _run_example()
