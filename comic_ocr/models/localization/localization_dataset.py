@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 from random import Random
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Sequence
 
 import torch
 from PIL import Image
@@ -218,17 +218,24 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
     and masks to the given `batch_image_size`.
     """
 
-    def __init__(self, r: Random, batch_image_size: SizeLike, *args, **kwargs):
+    def __init__(self,
+                 r: Random,
+                 batch_image_size: SizeLike,
+                 choices_padding_width: Sequence[int],
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._r = r
-        self._batch_image_size = Size(batch_image_size)
+        self._batch_image_size: Size = Size(batch_image_size)
+        self._choices_padding_width = tuple(choices_padding_width)
         self._image_tensors = [image_to_input_tensor(i) for i in self._images]
 
     def __getitem__(self, idx):
         output = {}
 
         # Crop the image.
+        padding_width = self._r.choice(self._choices_padding_width)
         crop_rect = _get_random_crop(self._r, self._images[idx], self._batch_image_size)
+        crop_rect = crop_rect.expand(-padding_width)
         output['input'] = _apply_crop_to_image(self._image_tensors[idx], crop_rect, padded_size=self._batch_image_size)
 
         # Apply the same cropping to masks
@@ -249,18 +256,21 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
     def subset(self, from_idx: Optional[int] = None,
                to_idx: Optional[int] = None) -> LocalizationDatasetWithAugmentation:
         subset = super().subset(from_idx, to_idx)
-        return LocalizationDatasetWithAugmentation.of_dataset(subset,
-                                                              r=self._r,
-                                                              batch_image_size=self._batch_image_size)
+        return LocalizationDatasetWithAugmentation.of_dataset(
+            subset, batch_image_size=self._batch_image_size, choices_padding_width=self._choices_padding_width)
 
     def shuffle(self, random_seed: any = '') -> LocalizationDatasetWithAugmentation:
         shuffled = super().shuffle(random_seed)
-        return LocalizationDatasetWithAugmentation.of_dataset(shuffled,
-                                                              r=self._r,
-                                                              batch_image_size=self._batch_image_size)
+        return LocalizationDatasetWithAugmentation.of_dataset(
+            shuffled, batch_image_size=self._batch_image_size, choices_padding_width=self._choices_padding_width)
 
     def with_batch_image_size(self, batch_image_size: SizeLike) -> LocalizationDatasetWithAugmentation:
-        return LocalizationDatasetWithAugmentation.of_dataset(self, batch_image_size=batch_image_size)
+        return LocalizationDatasetWithAugmentation.of_dataset(
+            self, batch_image_size=batch_image_size, choices_padding_width=self._choices_padding_width)
+
+    def with_choices_padding_width(self, choices_padding_width: Sequence[int]) -> LocalizationDatasetWithAugmentation:
+        return LocalizationDatasetWithAugmentation.of_dataset(
+            self, batch_image_size=self._batch_image_size, choices_padding_width=choices_padding_width)
 
     def without_augmentation(self) -> LocalizationDataset:
         return LocalizationDataset(images=self._images,
@@ -271,12 +281,15 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
     @staticmethod
     def of_dataset(dataset: LocalizationDataset,
                    r: Optional[Random] = None,
-                   batch_image_size: Optional[SizeLike] = None) -> LocalizationDatasetWithAugmentation:
+                   batch_image_size: Optional[SizeLike] = None,
+                   choices_padding_width: Optional[Sequence[int]] = None) -> LocalizationDatasetWithAugmentation:
         r = r if r is not None else Random()
         batch_image_size = Size(batch_image_size) if batch_image_size is not None else Size.of(500, 500)
+        choices_padding_width = choices_padding_width if choices_padding_width is not None else [0]
         return LocalizationDatasetWithAugmentation(
             r=r,
             batch_image_size=batch_image_size,
+            choices_padding_width=choices_padding_width,
             images=dataset._images,
             output_masks_char=dataset._output_masks_char,
             output_masks_line=dataset._output_masks_line,
@@ -294,45 +307,34 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
             min(dataset_b._batch_image_size.width, dataset_a._batch_image_size.width),
             min(dataset_b._batch_image_size.height, dataset_a._batch_image_size.height)
         )
-
+        choices_padding_width = []
+        choices_padding_width += dataset_a._choices_padding_width
+        choices_padding_width += dataset_b._choices_padding_width
         merged_dataset = LocalizationDataset.merge(dataset_a, dataset_b)
-        return LocalizationDatasetWithAugmentation.of_dataset(merged_dataset,
-                                                              r=r,
-                                                              batch_image_size=batch_image_size)
+        return LocalizationDatasetWithAugmentation.of_dataset(
+            merged_dataset, r=r, batch_image_size=batch_image_size, choices_padding_width=choices_padding_width)
 
     @staticmethod
     def load_generated_manga_dataset(
             directory,
             random_seed: str = "",
-            batch_image_size: SizeLike = Size.of(500, 500)
+            batch_image_size: SizeLike = Size.of(500, 500),
+            **kwargs
     ) -> LocalizationDatasetWithAugmentation:
-
         dataset = LocalizationDataset.load_generated_manga_dataset(directory, min_image_size=batch_image_size)
-        return LocalizationDatasetWithAugmentation.of_dataset(dataset,
-                                                              r=Random(random_seed),
-                                                              batch_image_size=Size(batch_image_size))
+        return LocalizationDatasetWithAugmentation.of_dataset(
+            dataset, r=Random(random_seed), batch_image_size=Size(batch_image_size), **kwargs)
 
     @staticmethod
     def load_line_annotated_manga_dataset(
             directory,
             random_seed: str = "",
-            batch_image_size: SizeLike = Size.of(500, 500)
+            batch_image_size: SizeLike = Size.of(500, 500),
+            **kwargs
     ) -> LocalizationDatasetWithAugmentation:
         dataset = LocalizationDataset.load_line_annotated_manga_dataset(directory, min_image_size=batch_image_size)
-        return LocalizationDatasetWithAugmentation.of_dataset(dataset,
-                                                              r=Random(random_seed),
-                                                              batch_image_size=batch_image_size)
-
-
-def _get_padded_size_and_paste_location(image, target_size: Size) -> Tuple[Size, Point]:
-    if image.width < target_size.width or image.height < target_size.height:
-        padded_size = Size.of(
-            max(image.width, target_size.width),
-            max(image.height, target_size.height))
-        x = (padded_size.width - image.width) // 2
-        y = (padded_size.height - image.height) // 2
-        return padded_size, Point.of(x, y)
-    return Size.of(image.width, image.height), Point.of(0, 0)
+        return LocalizationDatasetWithAugmentation.of_dataset(
+            dataset, r=Random(random_seed), batch_image_size=batch_image_size, **kwargs)
 
 
 def _apply_crop_to_mask(mask: torch.Tensor, crop_rect: Rectangle, padded_size: Size) -> torch.Tensor:

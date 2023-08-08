@@ -53,9 +53,7 @@ def align_line_horizontal(block_a: Rectangle, block_b: Rectangle, x_min_margin=1
 
     x_margin = max(block_a.height, block_b.height, x_min_margin)
     return (block_a.top - y_margin) <= block_b.center.y <= (block_a.bottom + y_margin) and \
-           (abs(block_a.left - block_b.left) - block_a.width) < x_margin
-
-
+        (abs(block_a.left - block_b.left) - block_a.width) < x_margin
 
 
 def divine_rect_into_overlapping_tiles(

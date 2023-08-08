@@ -82,6 +82,59 @@ def test_load_generated_manga_dataset_with_augmentation():
     assert batch['output_mask_paragraph'].shape == (2, 500, 500)
 
 
+def test_load_dataset_with_padding_augmentation():
+    dataset_dir = get_path_example_dir('manga_generated')
+    dataset = LocalizationDatasetWithAugmentation.load_generated_manga_dataset(
+        dataset_dir, batch_image_size=Size.of(500, 500), choices_padding_width=[1])
+    assert len(dataset) == 3
+    assert dataset.get_image(0).size == (768, 768)
+    assert dataset.get_mask_char(0).size == (768, 768)
+    assert dataset.get_mask_line(0).size == (768, 768)
+
+    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    batch = next(iter(train_dataloader))
+
+    assert batch['input'].shape == (2, 3, 500, 500)
+    assert batch['output_mask_char'].shape == (2, 500, 500)
+    assert batch['output_mask_line'].shape == (2, 500, 500)
+    assert batch['output_mask_paragraph'].shape == (2, 500, 500)
+
+    # check if the input is really padded
+    assert batch['input'][0][:, 0:1, :].sum() == 0
+    assert batch['input'][0][:, :, 0:1].sum() == 0
+    assert batch['input'][0][:, -1:0, :].sum() == 0
+    assert batch['input'][0][:, :, -1:0].sum() == 0
+    assert batch['input'][0][:, 0:2, :].sum() > 0
+    assert batch['input'][0][:, :, 0:2].sum() > 0
+
+
+def test_assign_dataset_with_padding_augmentation():
+    dataset_dir = get_path_example_dir('manga_generated')
+    dataset = LocalizationDatasetWithAugmentation.load_generated_manga_dataset(
+        dataset_dir, batch_image_size=Size.of(500, 500), choices_padding_width=[1])
+    dataset = dataset.with_choices_padding_width([5])
+    assert len(dataset) == 3
+    assert dataset.get_image(0).size == (768, 768)
+    assert dataset.get_mask_char(0).size == (768, 768)
+    assert dataset.get_mask_line(0).size == (768, 768)
+
+    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    batch = next(iter(train_dataloader))
+
+    assert batch['input'].shape == (2, 3, 500, 500)
+    assert batch['output_mask_char'].shape == (2, 500, 500)
+    assert batch['output_mask_line'].shape == (2, 500, 500)
+    assert batch['output_mask_paragraph'].shape == (2, 500, 500)
+
+    # check if the input is really padded
+    assert batch['input'][0][:, 0:5, :].sum() == 0
+    assert batch['input'][0][:, :, 0:5].sum() == 0
+    assert batch['input'][0][:, -5:0, :].sum() == 0
+    assert batch['input'][0][:, :, -5:0].sum() == 0
+    assert batch['input'][0][:, 0:10, :].sum() > 0
+    assert batch['input'][0][:, :, 0:10].sum() > 0
+
+
 def test_load_and_resize_generated_manga_dataset_with_augmentation(tmpdir):
     dataset_dir = tmpdir.join('dataset')
     generated_manga.create_dataset(dataset_dir, output_count=5, output_size=Size.of(500, 500))
