@@ -6,14 +6,12 @@ from typing import Optional, Callable, Dict, List, Tuple
 
 import torch
 from torch import optim
-from torch.utils.data import DataLoader
 from torch.utils import tensorboard
 from tqdm import tqdm
 
 from comic_ocr.models.localization import calculate_high_level_metrics
 from comic_ocr.models.localization.localization_dataset import LocalizationDataset
 from comic_ocr.models.localization import localization_model
-from comic_ocr.utils.pytorch_model import calculate_validation_loss
 from comic_ocr.utils import files
 
 logger = logging.getLogger(__name__)

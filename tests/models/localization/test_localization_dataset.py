@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from comic_ocr.dataset import generated_manga
 from comic_ocr.models.localization.localization_dataset import LocalizationDataset, LocalizationDatasetWithAugmentation
@@ -80,6 +81,47 @@ def test_load_generated_manga_dataset_with_augmentation():
     assert batch['output_mask_char'].shape == (2, 500, 500)
     assert batch['output_mask_line'].shape == (2, 500, 500)
     assert batch['output_mask_paragraph'].shape == (2, 500, 500)
+
+
+def test_shared_random_seed_for_cropping():
+    dataset_dir = get_path_example_dir('manga_generated')
+    dataset_a = LocalizationDatasetWithAugmentation.load_generated_manga_dataset(
+        dataset_dir, batch_image_size=Size.of(500, 500), random_seed="test", enable_color_jitter=False)
+    dataset_b = LocalizationDatasetWithAugmentation.load_generated_manga_dataset(
+        dataset_dir, batch_image_size=Size.of(500, 500), random_seed="test", enable_color_jitter=False)
+
+    assert len(dataset_a) == 3
+    assert len(dataset_b) == 3
+
+    train_dataloader_a = dataset_a.loader(batch_size=2, shuffle=False, num_workers=1)
+    train_dataloader_b = dataset_b.loader(batch_size=2, shuffle=False, num_workers=1)
+    batch_a = next(iter(train_dataloader_a))
+    batch_b = next(iter(train_dataloader_b))
+
+    assert torch.eq(batch_a['input'], batch_b['input']).all()
+    assert torch.eq(batch_a['output_mask_char'], batch_b['output_mask_char']).all()
+    assert torch.eq(batch_a['output_mask_line'], batch_b['output_mask_line']).all()
+    assert torch.eq(batch_a['output_mask_paragraph'], batch_b['output_mask_paragraph']).all()
+
+
+def test_color_jitter():
+    dataset_dir = get_path_example_dir('manga_generated')
+    dataset_no_jitter = LocalizationDatasetWithAugmentation.load_generated_manga_dataset(
+        dataset_dir, batch_image_size=Size.of(500, 500), random_seed="test", enable_color_jitter=False)
+    dataset_with_jitter = LocalizationDatasetWithAugmentation.load_generated_manga_dataset(
+        dataset_dir, batch_image_size=Size.of(500, 500), random_seed="test", enable_color_jitter=True,
+        color_jitter_brightness=.5, color_jitter_hue=.3)
+
+    train_dataloader_no_jitter = dataset_no_jitter.loader(batch_size=2, shuffle=False, num_workers=1)
+    train_dataloader_with_jitter = dataset_with_jitter.loader(batch_size=2, shuffle=False, num_workers=1)
+
+    batch_no_jitter = next(iter(train_dataloader_no_jitter))
+    batch_with_jitter = next(iter(train_dataloader_with_jitter))
+
+    assert torch.not_equal(batch_no_jitter['input'], batch_with_jitter['input']).any()
+    assert torch.eq(batch_no_jitter['output_mask_char'], batch_with_jitter['output_mask_char']).all()
+    assert torch.eq(batch_no_jitter['output_mask_line'], batch_with_jitter['output_mask_line']).all()
+    assert torch.eq(batch_no_jitter['output_mask_paragraph'], batch_with_jitter['output_mask_paragraph']).all()
 
 
 def test_load_dataset_with_padding_augmentation():

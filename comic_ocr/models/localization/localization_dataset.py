@@ -9,6 +9,7 @@ from typing import List, Optional, Tuple, Sequence
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
+from torchvision.transforms import transforms
 from torchvision.transforms.functional import pil_to_tensor
 
 from comic_ocr.dataset import annotated_manga
@@ -35,6 +36,7 @@ class LocalizationDataset(torch.utils.data.Dataset):
                  output_masks_line: Optional[List[torch.Tensor]] = None,
                  output_masks_paragraph: Optional[List[torch.Tensor]] = None,
                  output_line_locations: Optional[List[List[Rectangle]]] = None,
+                 **kwargs
                  ):
         assert len(images) >= 0
         assert output_masks_char is None or len(output_masks_char) == len(images)
@@ -222,12 +224,20 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
                  r: Random,
                  batch_image_size: SizeLike,
                  choices_padding_width: Sequence[int],
+                 enable_color_jitter: bool = True,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._r = r
         self._batch_image_size: Size = Size(batch_image_size)
         self._choices_padding_width = tuple(choices_padding_width)
         self._image_tensors = [image_to_input_tensor(i) for i in self._images]
+
+        image_transforms = []
+        if enable_color_jitter:
+            color_jitter_kwargs = {k[13:]: v for k, v in kwargs.items() if
+                                   k.startswith('color_jitter_')}
+            image_transforms += [transforms.ColorJitter(**color_jitter_kwargs)]
+        self._image_transform = transforms.Compose(image_transforms)
 
     def __getitem__(self, idx):
         output = {}
@@ -237,6 +247,7 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
         crop_rect = _get_random_crop(self._r, self._images[idx], self._batch_image_size)
         crop_rect = crop_rect.expand(-padding_width)
         output['input'] = _apply_crop_to_image(self._image_tensors[idx], crop_rect, padded_size=self._batch_image_size)
+        output['input'] = self._image_transform(output['input'])
 
         # Apply the same cropping to masks
         if self._output_masks_char:
@@ -282,7 +293,8 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
     def of_dataset(dataset: LocalizationDataset,
                    r: Optional[Random] = None,
                    batch_image_size: Optional[SizeLike] = None,
-                   choices_padding_width: Optional[Sequence[int]] = None) -> LocalizationDatasetWithAugmentation:
+                   choices_padding_width: Optional[Sequence[int]] = None,
+                   **kwargs) -> LocalizationDatasetWithAugmentation:
         r = r if r is not None else Random()
         batch_image_size = Size(batch_image_size) if batch_image_size is not None else Size.of(500, 500)
         choices_padding_width = choices_padding_width if choices_padding_width is not None else [0]
@@ -294,13 +306,15 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
             output_masks_char=dataset._output_masks_char,
             output_masks_line=dataset._output_masks_line,
             output_masks_paragraph=dataset._output_masks_paragraph,
-            output_line_locations=dataset._output_line_locations
+            output_line_locations=dataset._output_line_locations,
+            **kwargs
         )
 
     @staticmethod
     def merge(
             dataset_a: LocalizationDatasetWithAugmentation,
-            dataset_b: LocalizationDatasetWithAugmentation
+            dataset_b: LocalizationDatasetWithAugmentation,
+            **kwargs
     ) -> LocalizationDatasetWithAugmentation:
         r = Random(dataset_a._r.random() * dataset_b._r.random())
         batch_image_size = Size.of(
@@ -312,7 +326,8 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
         choices_padding_width += dataset_b._choices_padding_width
         merged_dataset = LocalizationDataset.merge(dataset_a, dataset_b)
         return LocalizationDatasetWithAugmentation.of_dataset(
-            merged_dataset, r=r, batch_image_size=batch_image_size, choices_padding_width=choices_padding_width)
+            merged_dataset, r=r, batch_image_size=batch_image_size, choices_padding_width=choices_padding_width,
+            **kwargs)
 
     @staticmethod
     def load_generated_manga_dataset(
