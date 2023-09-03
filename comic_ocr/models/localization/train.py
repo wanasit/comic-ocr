@@ -37,7 +37,7 @@ def train(
         model_name: str,
         model: localization_model.LocalizationModel,
         train_dataset: LocalizationDataset,
-        train_epoch_count: int = 20,
+        train_epoch_count: int = 25,
         train_device: Optional[torch.device] = None,
         validate_dataset: Optional[LocalizationDataset] = None,
         validate_device: Optional[torch.device] = None,
@@ -84,6 +84,7 @@ def train(
             tepoch.set_description(f"Epoch {i_epoch}")
             training_dataloader = train_dataset.loader(batch_size=batch_size, shuffle=True)
             for batch in training_dataloader:
+                model = model.train()
                 step_counter += 1
 
                 # Update the model
@@ -103,10 +104,10 @@ def train(
                 current_batch_size = batch['input'].size(0)
 
                 if update_every_n and step_counter % update_every_n == 0:
-
+                    model = model.eval()
                     # Update stats on training_dataset and write to tensorbaord
                     _validate_model(training_metrics, model, train_dataset, batch_size=batch_size,
-                                    sample_size_limit=batch_size * 2)
+                                    sample_size_limit=batch_size * 2, device=validate_device)
                     if writer_train:
                         writer_train.add_scalar('lr', lr_scheduler.get_last_lr()[-1], step_counter)
                         for k in training_metrics:
@@ -115,7 +116,7 @@ def train(
                     # Update stats on validate_dataset and write to tensorbaord
                     if validate_dataset:
                         _validate_model(validation_metrics, model, validate_dataset, batch_size=batch_size,
-                                        sample_size_limit=update_validate_sample_size)
+                                        sample_size_limit=update_validate_sample_size, device=validate_device)
                         if writer_validate:
                             writer_validate.add_scalar('lr', lr_scheduler.get_last_lr()[-1], step_counter)
                             for k in validation_metrics:
@@ -132,7 +133,8 @@ def train(
 
 
 def _validate_model(metrics, model, dataset, batch_size, sample_size_limit=None, device: Optional[torch.device] = None):
-    model = model.cpu()
+    device = device if device else torch.device('cpu')
+    model = model.to(device)
     loss = _calculate_avg_loss(model, dataset, batch_size=batch_size, sample_size_limit=sample_size_limit,
                                device=device)
     metrics['loss'].append(loss)

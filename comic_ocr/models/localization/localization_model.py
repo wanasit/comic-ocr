@@ -38,8 +38,8 @@ class WeightedDiceLoss(nn.Module):
         return (1 - dice) * self.weight
 
 
-DEFAULT_LOSS_CRITERION_CHAR = WeightedDiceLoss(weight=1.0)
-DEFAULT_LOSS_CRITERION_LINE = WeightedDiceLoss(weight=0.2)
+DEFAULT_LOSS_CRITERION_CHAR = WeightedBCEWithLogitsLoss(weight=1.0)
+DEFAULT_LOSS_CRITERION_LINE = WeightedDiceLoss(weight=0.5)
 
 
 class LocalizationModel(nn.Module):
@@ -96,12 +96,18 @@ class LocalizationModel(nn.Module):
         loss = torch.zeros(1, device=device)
         if 'output_mask_char' in dataset_batch:
             output = dataset_batch['output_mask_char'].float()
-            output = output.to(device) if device else output
+            if device is not None:
+                output = output.to(device)
+                loss_criterion_for_char = loss_criterion_for_char.to(device) if \
+                    isinstance(loss_criterion_for_char, nn.Module) else loss_criterion_for_char
             loss += loss_criterion_for_char(output_char, output)
 
         if 'output_mask_line' in dataset_batch:
             output = dataset_batch['output_mask_line'].float()
-            output = output.to(device) if device else output
+            if device is not None:
+                output = output.to(device)
+                loss_criterion_for_line = loss_criterion_for_line.to(device) if \
+                    isinstance(loss_criterion_for_line, nn.Module) else loss_criterion_for_line
             loss += loss_criterion_for_line(output_line, output)
 
         return loss
@@ -133,11 +139,11 @@ class LocalizationModel(nn.Module):
             image: Image.Image,
             device: Optional[torch.device] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        device = device if device is not None else torch.device('cpu')
         with torch.no_grad():
             input_tensor = image_to_input_tensor(image).unsqueeze(0)
-            if device is None:
-                self.to(device)
-                input_tensor = input_tensor.to(device)
+            self.to(device)
+            input_tensor = input_tensor.to(device)
             output_char, output_line, _ = self(input_tensor)
         return torch.sigmoid(output_char[0]), torch.sigmoid(output_line[0])
 

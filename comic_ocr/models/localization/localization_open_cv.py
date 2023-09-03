@@ -53,7 +53,7 @@ def locate_lines_in_character_mask(
         List[Rectangle]: the line locations
     """
     if isinstance(input_tensor, torch.Tensor):
-        input_tensor = input_tensor.numpy()
+        input_tensor = input_tensor.cpu().numpy()
 
     if len(input_tensor.shape) == 3:
         input_tensor = input_tensor.mean(axis=0)
