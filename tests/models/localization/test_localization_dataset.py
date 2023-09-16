@@ -43,6 +43,27 @@ def test_load_generated_manga_dataset():
     assert batch['output_mask_paragraph'].shape == (1, 768, 768)
 
 
+def test_repeat_and_shuffle_dataset():
+    dataset_dir = get_path_example_dir('manga_annotated')
+    dataset = LocalizationDataset.load_line_annotated_manga_dataset(dataset_dir)
+
+    assert len(dataset) == 5
+    assert dataset.get_image(0).size == (707, 1000)
+    assert dataset.get_image(4).size == (800, 600)
+
+    dataset = dataset.repeat(3)
+    assert len(dataset) == 15
+    assert dataset.get_image(0).size == (707, 1000)
+    assert dataset.get_image(4).size == (800, 600)
+    assert dataset.get_image(5).size == (707, 1000)
+    assert dataset.get_image(9).size == (800, 600)
+
+    dataset = dataset.shuffle(random_seed=123)
+    assert len(dataset) == 15
+    assert dataset.get_image(0).size == (800, 600)
+    assert dataset.get_image(1).size == (1024, 1446)
+
+
 def test_load_line_annotated_manga_dataset_with_augmentation():
     dataset_dir = get_path_example_dir('manga_annotated')
     dataset = LocalizationDatasetWithAugmentation.load_line_annotated_manga_dataset(dataset_dir,
@@ -55,7 +76,7 @@ def test_load_line_annotated_manga_dataset_with_augmentation():
 
     # dataset.get_mask_char(0).show()
 
-    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    train_dataloader = dataset.loader(batch_size=2, shuffle=False, num_workers=1)
     batch = next(iter(train_dataloader))
 
     assert batch['input'].shape == (2, 3, 500, 400)
@@ -256,3 +277,19 @@ def test_merge_datasets_with_different_batch_size():
     assert batch['input'].shape == (2, 3, 400, 400)
     assert batch['output_mask_line'].shape == (2, 400, 400)
     assert batch['output_mask_char'].shape == (2, 400, 400)
+
+
+def test_merge_duplicated_datasets():
+    dataset_annotated = LocalizationDatasetWithAugmentation.load_line_annotated_manga_dataset(
+        get_path_example_dir('manga_annotated'), batch_image_size=Size.of(500, 400))
+
+    dataset = LocalizationDatasetWithAugmentation.merge(dataset_annotated, dataset_annotated, dataset_annotated)
+    assert len(dataset) == len(dataset_annotated) * 3
+
+    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    batch = next(iter(train_dataloader))
+
+    assert 'output_mask_paragraph' not in batch
+    assert batch['input'].shape == (2, 3, 400, 500)
+    assert batch['output_mask_line'].shape == (2, 400, 500)
+    assert batch['output_mask_char'].shape == (2, 400, 500)

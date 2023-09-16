@@ -26,6 +26,7 @@ def save_on_increasing_validate_metric(model, model_path, metric_name):
     def save(steps, training_metrics, validation_metrics):
         if not metric_value or metric_value[0] < validation_metrics[metric_name][-1]:
             Path(model_path).parent.mkdir(parents=True, exist_ok=True)
+            model.to('cpu')
             torch.save(model, model_path)
             metric_value.clear()
             metric_value.append(validation_metrics[metric_name][-1])
@@ -176,8 +177,7 @@ def _run_example():
         model = conv_unet.BaselineConvUnet()
 
     dataset = LocalizationDataset.load_line_annotated_manga_dataset(
-        files.get_path_project_dir('data/manga_line_annotated'),
-        batch_image_size=model.preferred_image_size)
+        files.get_path_project_dir('data/manga_line_annotated'))
 
     save_model = save_on_increasing_validate_metric(model, model_path, 'line_level_precision')
 
@@ -186,7 +186,7 @@ def _run_example():
         save_model(epoch, training_losses, validation_metrics)
 
     validation_dataset = dataset.subset(to_idx=2)
-    training_dataset = dataset.subset(from_idx=2)
+    training_dataset = dataset.subset(from_idx=2, to_idx=10)
     train(model_name, model,
           train_dataset=training_dataset,
           validate_dataset=validation_dataset,

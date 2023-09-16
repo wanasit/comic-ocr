@@ -117,17 +117,49 @@ class LocalizationDataset(torch.utils.data.Dataset):
             output_masks_paragraph=output_masks_paragraph,
             output_line_locations=output_location_lines)
 
+    def repeat(self, n_times: int) -> LocalizationDataset:
+        images = self._images * n_times
+        output_masks_char = self._output_masks_char * n_times if self._output_masks_char else None
+        output_masks_line = self._output_masks_line * n_times if self._output_masks_line else None
+        output_masks_paragraph = self._output_masks_paragraph * n_times if self._output_masks_paragraph else None
+        output_line_locations = self._output_line_locations * n_times if self._output_line_locations else None
+
+        return LocalizationDataset(
+            images=images,
+            output_masks_char=output_masks_char,
+            output_masks_line=output_masks_line,
+            output_masks_paragraph=output_masks_paragraph,
+            output_line_locations=output_line_locations)
+
     @staticmethod
-    def merge(dataset_a: LocalizationDataset, dataset_b: LocalizationDataset):
-        images = dataset_a._images + dataset_b._images
-        output_masks_char = dataset_a._output_masks_char + dataset_b._output_masks_char \
-            if dataset_a._output_masks_char and dataset_b._output_masks_char else None
-        output_masks_line = dataset_a._output_masks_line + dataset_b._output_masks_line \
-            if dataset_a._output_masks_line and dataset_b._output_masks_line else None
-        output_masks_paragraph = dataset_a._output_masks_paragraph + dataset_b._output_masks_paragraph \
-            if dataset_a._output_masks_paragraph and dataset_b._output_masks_paragraph else None
-        output_locations_lines = dataset_a._output_line_locations + dataset_b._output_line_locations \
-            if dataset_a._output_line_locations and dataset_b._output_line_locations else None
+    def merge(*datasets: LocalizationDataset):
+
+        images = []
+        output_masks_char = []
+        output_masks_line = []
+        output_masks_paragraph = []
+        output_locations_lines = []
+
+        for dataset in datasets:
+            if dataset._output_masks_char is None:
+                output_masks_char = None
+            if dataset._output_masks_line is None:
+                output_masks_line = None
+            if dataset._output_masks_paragraph is None:
+                output_masks_paragraph = None
+            if dataset._output_line_locations is None:
+                output_locations_lines = None
+
+        for dataset in datasets:
+            images += dataset._images
+            if output_masks_char is not None:
+                output_masks_char += dataset._output_masks_char
+            if output_masks_line is not None:
+                output_masks_line += dataset._output_masks_line
+            if output_masks_paragraph is not None:
+                output_masks_paragraph += dataset._output_masks_paragraph
+            if output_locations_lines is not None:
+                output_locations_lines += dataset._output_line_locations
 
         return LocalizationDataset(
             images=images,
@@ -311,23 +343,17 @@ class LocalizationDatasetWithAugmentation(LocalizationDataset):
         )
 
     @staticmethod
-    def merge(
-            dataset_a: LocalizationDatasetWithAugmentation,
-            dataset_b: LocalizationDatasetWithAugmentation,
-            **kwargs
-    ) -> LocalizationDatasetWithAugmentation:
-        r = Random(dataset_a._r.random() * dataset_b._r.random())
+    def merge(*datasets: LocalizationDatasetWithAugmentation,
+              r: Optional[Random] = None) -> LocalizationDatasetWithAugmentation:
+        r = r if r is not None else Random()
         batch_image_size = Size.of(
-            min(dataset_b._batch_image_size.width, dataset_a._batch_image_size.width),
-            min(dataset_b._batch_image_size.height, dataset_a._batch_image_size.height)
+            min([d._batch_image_size.width for d in datasets]),
+            min([d._batch_image_size.height for d in datasets]),
         )
-        choices_padding_width = []
-        choices_padding_width += dataset_a._choices_padding_width
-        choices_padding_width += dataset_b._choices_padding_width
-        merged_dataset = LocalizationDataset.merge(dataset_a, dataset_b)
+        choices_padding_width = [w for d in datasets for w in d._choices_padding_width]
+        merged_dataset = LocalizationDataset.merge(*datasets)
         return LocalizationDatasetWithAugmentation.of_dataset(
-            merged_dataset, r=r, batch_image_size=batch_image_size, choices_padding_width=choices_padding_width,
-            **kwargs)
+            merged_dataset, r=r, batch_image_size=batch_image_size, choices_padding_width=choices_padding_width)
 
     @staticmethod
     def load_generated_manga_dataset(
