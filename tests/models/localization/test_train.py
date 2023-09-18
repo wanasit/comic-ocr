@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from comic_ocr.models import localization
-from comic_ocr.models.localization.train import train, save_on_increasing_validate_metric
+from comic_ocr.models.localization.train import train, compute_loss_for_each_sample, callback_to_save_model_on_increasing_metric
 from comic_ocr.utils import files
 
 import hashlib
@@ -25,7 +25,7 @@ def test_save_on_increasing_validate_metric(tmpdir):
     model_path = str(model_path)
 
     model = localization.BasicLocalizationModel()
-    update_func = save_on_increasing_validate_metric(model, model_path, 'acc')
+    update_func = callback_to_save_model_on_increasing_metric(model, model_path, 'acc')
 
     model.reset_parameters()
     update_func(1, {}, {'acc': [0.26]})
@@ -43,6 +43,17 @@ def test_save_on_increasing_validate_metric(tmpdir):
     update_func(3, {}, {'acc': [0.26, 0.25, 0.30]})
     assert os.path.exists(model_path)
     assert model_hash != hash_file(model_path)
+
+
+def test_compute_loss_for_each_sample():
+    model = localization.BasicLocalizationModel()
+    dataset = localization.LocalizationDatasetWithAugmentation.load_line_annotated_manga_dataset(
+        files.get_path_project_dir('example/manga_annotated'),
+        batch_image_size=model.preferred_image_size)
+
+    losses = compute_loss_for_each_sample(model, dataset)
+    assert len(losses) == len(dataset)
+    assert all([loss >= 0 for loss in losses])
 
 
 def test_train_to_finish_and_return_metrics():

@@ -10,7 +10,7 @@ from torch.utils import tensorboard
 from tqdm import tqdm
 
 from comic_ocr.models.localization import calculate_high_level_metrics
-from comic_ocr.models.localization.localization_dataset import LocalizationDataset
+from comic_ocr.models.localization import localization_dataset
 from comic_ocr.models.localization import localization_model
 from comic_ocr.utils import files
 
@@ -20,27 +20,58 @@ HistoricalMetrics = Dict[str, List[float]]
 UpdateCallback = Callable[[int, HistoricalMetrics, HistoricalMetrics], None]
 
 
-def save_on_increasing_validate_metric(model, model_path, metric_name):
+def callback_to_save_model(model, model_path) -> UpdateCallback:
+    def save(steps, training_metrics, validation_metrics):
+        Path(model_path).parent.mkdir(parents=True, exist_ok=True)
+        model.to('cpu')
+        torch.save(model, model_path)
+
+    return save
+
+
+def callback_to_save_model_on_increasing_metric(model, model_path, metric_name) -> UpdateCallback:
+    save_model_callback = callback_to_save_model(model, model_path)
     metric_value = []
 
     def save(steps, training_metrics, validation_metrics):
         if not metric_value or metric_value[0] < validation_metrics[metric_name][-1]:
-            Path(model_path).parent.mkdir(parents=True, exist_ok=True)
-            model.to('cpu')
-            torch.save(model, model_path)
+            save_model_callback(steps, training_metrics, validation_metrics)
             metric_value.clear()
             metric_value.append(validation_metrics[metric_name][-1])
 
     return save
 
 
+def compute_loss_for_each_sample(
+        model: localization_model.LocalizationModel,
+        dataset: localization_dataset.LocalizationDataset,
+        loss_criterion_for_char: Optional[Callable] = None,
+        loss_criterion_for_line: Optional[Callable] = None,
+        device: torch.device = torch.device('cpu')):
+    if isinstance(dataset, localization_dataset.LocalizationDatasetWithAugmentation):
+        dataset = dataset.without_augmentation()
+
+    loader = dataset.loader(batch_size=1, shuffle=False)
+    results = []
+
+    for i, batch in enumerate(loader):
+        model.eval()
+        loss = model.compute_loss(
+            batch,
+            loss_criterion_for_char=loss_criterion_for_char,
+            loss_criterion_for_line=loss_criterion_for_line,
+            device=device)
+        results += [loss]
+    return results
+
+
 def train(
         model_name: str,
         model: localization_model.LocalizationModel,
-        train_dataset: LocalizationDataset,
+        train_dataset: localization_dataset.LocalizationDataset,
         train_epoch_count: int = 25,
         train_device: Optional[torch.device] = None,
-        validate_dataset: Optional[LocalizationDataset] = None,
+        validate_dataset: Optional[localization_dataset.LocalizationDataset] = None,
         validate_device: Optional[torch.device] = None,
         update_callback: Optional[UpdateCallback] = None,
         update_every_n: Optional[int] = 20,
@@ -48,8 +79,8 @@ def train(
         batch_size=10,
         optimizer=None,
         lr_scheduler=None,
-        loss_criterion_for_char: Optional[localization_model.WeightedBCEWithLogitsLoss] = None,
-        loss_criterion_for_line: Optional[localization_model.WeightedBCEWithLogitsLoss] = None,
+        loss_criterion_for_char: Optional[Callable] = None,
+        loss_criterion_for_line: Optional[Callable] = None,
         tqdm_enable=True,
         tensorboard_log_enable=True,
         tensorboard_log_dir=None
@@ -71,12 +102,6 @@ def train(
     lr_scheduler = lr_scheduler if lr_scheduler else optim.lr_scheduler.StepLR(optimizer,
                                                                                step_size=int(max(train_steps * 0.8, 1)),
                                                                                gamma=0.1)
-
-    loss_criterion_for_char = loss_criterion_for_char if loss_criterion_for_char else \
-        localization_model.DEFAULT_LOSS_CRITERION_CHAR
-    loss_criterion_for_line = loss_criterion_for_line if loss_criterion_for_line else \
-        localization_model.DEFAULT_LOSS_CRITERION_LINE
-
     validation_metrics: HistoricalMetrics = defaultdict(list)
     training_metrics: HistoricalMetrics = defaultdict(list)
     step_counter = 0
@@ -107,8 +132,12 @@ def train(
                 if update_every_n and step_counter % update_every_n == 0:
                     model = model.eval()
                     # Update stats on training_dataset and write to tensorbaord
-                    _validate_model(training_metrics, model, train_dataset, batch_size=batch_size,
-                                    sample_size_limit=batch_size * 2, device=validate_device)
+                    _validate_model(training_metrics, model, train_dataset,
+                                    batch_size=batch_size,
+                                    sample_size_limit=batch_size * 2,
+                                    loss_criterion_for_char=loss_criterion_for_char,
+                                    loss_criterion_for_line=loss_criterion_for_line,
+                                    device=validate_device)
                     if writer_train:
                         writer_train.add_scalar('lr', lr_scheduler.get_last_lr()[-1], step_counter)
                         for k in training_metrics:
@@ -117,7 +146,10 @@ def train(
                     # Update stats on validate_dataset and write to tensorbaord
                     if validate_dataset:
                         _validate_model(validation_metrics, model, validate_dataset, batch_size=batch_size,
-                                        sample_size_limit=update_validate_sample_size, device=validate_device)
+                                        sample_size_limit=update_validate_sample_size,
+                                        loss_criterion_for_char=loss_criterion_for_char,
+                                        loss_criterion_for_line=loss_criterion_for_line,
+                                        device=validate_device)
                         if writer_validate:
                             writer_validate.add_scalar('lr', lr_scheduler.get_last_lr()[-1], step_counter)
                             for k in validation_metrics:
@@ -133,10 +165,15 @@ def train(
     return training_metrics, validation_metrics
 
 
-def _validate_model(metrics, model, dataset, batch_size, sample_size_limit=None, device: Optional[torch.device] = None):
+def _validate_model(metrics, model, dataset, batch_size, sample_size_limit=None,
+                    loss_criterion_for_char: Optional[Callable] = None,
+                    loss_criterion_for_line: Optional[Callable] = None,
+                    device: Optional[torch.device] = None):
     device = device if device else torch.device('cpu')
     model = model.to(device)
     loss = _calculate_avg_loss(model, dataset, batch_size=batch_size, sample_size_limit=sample_size_limit,
+                               loss_criterion_for_char=loss_criterion_for_char,
+                               loss_criterion_for_line=loss_criterion_for_line,
                                device=device)
     metrics['loss'].append(loss)
     if len(dataset) > 0 and len(dataset.get_line_locations(0)) > 0:
@@ -147,9 +184,11 @@ def _validate_model(metrics, model, dataset, batch_size, sample_size_limit=None,
 
 def _calculate_avg_loss(
         model: localization_model.LocalizationModel,
-        dataset: LocalizationDataset,
+        dataset: localization_dataset.LocalizationDataset,
         batch_size: int,
         sample_size_limit: Optional[int] = None,
+        loss_criterion_for_char: Optional[Callable] = None,
+        loss_criterion_for_line: Optional[Callable] = None,
         device: Optional[torch.device] = None) -> float:
     sample_size_limit = sample_size_limit if sample_size_limit else len(dataset)
     dataset = dataset if sample_size_limit >= len(dataset) else dataset.shuffle().subset(to_idx=sample_size_limit)
@@ -158,7 +197,8 @@ def _calculate_avg_loss(
     with torch.no_grad():
         valid_dataloader = dataset.loader(batch_size=batch_size, num_workers=0)
         for i_batch, batch in enumerate(valid_dataloader):
-            loss = model.compute_loss(batch, device=device)
+            loss = model.compute_loss(batch, device=device, loss_criterion_for_char=loss_criterion_for_char,
+                                      loss_criterion_for_line=loss_criterion_for_line)
             total_loss += loss.item()
 
     return total_loss / sample_size_limit
@@ -176,10 +216,10 @@ def _run_example():
         print('Creating a new model...')
         model = conv_unet.BaselineConvUnet()
 
-    dataset = LocalizationDataset.load_line_annotated_manga_dataset(
+    dataset = localization_dataset.LocalizationDataset.load_line_annotated_manga_dataset(
         files.get_path_project_dir('data/manga_line_annotated'))
 
-    save_model = save_on_increasing_validate_metric(model, model_path, 'line_level_precision')
+    save_model = callback_to_save_model_on_increasing_metric(model, model_path, 'line_level_precision')
 
     def update(epoch, training_losses, validation_metrics):
         print('Update')

@@ -38,8 +38,12 @@ class WeightedDiceLoss(nn.Module):
         return (1 - dice) * self.weight
 
 
-DEFAULT_LOSS_CRITERION_CHAR = WeightedBCEWithLogitsLoss(weight=1.0)
-DEFAULT_LOSS_CRITERION_LINE = WeightedDiceLoss(weight=0.5)
+def default_lost_criterion_char():
+    return WeightedBCEWithLogitsLoss(weight=1.0)
+
+
+def default_lost_criterion_line():
+    return WeightedDiceLoss(weight=0.5)
 
 
 class LocalizationModel(nn.Module):
@@ -82,10 +86,16 @@ class LocalizationModel(nn.Module):
     def compute_loss(
             self,
             dataset_batch,
-            loss_criterion_for_char: Optional[Callable] = DEFAULT_LOSS_CRITERION_CHAR,
-            loss_criterion_for_line: Optional[Callable] = DEFAULT_LOSS_CRITERION_LINE,
+            loss_criterion_for_char: Optional[Callable] = None,
+            loss_criterion_for_line: Optional[Callable] = None,
             device: Optional[torch.device] = None
     ) -> torch.Tensor:
+
+        if loss_criterion_for_char is None:
+            loss_criterion_for_char = default_lost_criterion_char()
+
+        if loss_criterion_for_line is None:
+            loss_criterion_for_line = default_lost_criterion_line()
 
         input_tensor = dataset_batch['input']
         if device is not None:
