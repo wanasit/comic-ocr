@@ -104,3 +104,17 @@ def test_align_line_horizontal_when_overlap_vertically():
     block_b = Rectangle.of_xywh(121, 35, 5, 5)
     assert localization_open_cv.align_line_horizontal(block_a, block_b)
     assert localization_open_cv.align_line_horizontal(block_b, block_a)
+
+def test_align_line_horizontal_when_size_is_differ():
+
+    # Note: block_b is a "," character following block_a
+    block_a = Rectangle.of_size((70, 24), at=(238, 698))
+    block_b = Rectangle.of_size((13, 13), at=(301, 712))
+    assert localization_open_cv.align_line_horizontal(block_a, block_b)
+    assert localization_open_cv.align_line_horizontal(block_b, block_a)
+
+    # Note: block_a is a "." dot above/overlapping with block_b
+    block_a = Rectangle.of_size((6, 4), at=(294, 98))
+    block_b = Rectangle.of_size((118, 14), at=(204, 101))
+    assert localization_open_cv.align_line_horizontal(block_a, block_b)
+    assert localization_open_cv.align_line_horizontal(block_b, block_a)

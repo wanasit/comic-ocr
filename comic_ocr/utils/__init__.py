@@ -42,12 +42,14 @@ def image_with_annotations(
     draw = ImageDraw.Draw(image, 'RGBA')
     for annotation in annotations:
         location = annotation.location if hasattr(annotation, 'location') else annotation
-        text = annotation.text if hasattr(annotation, 'text') else ''
-        text = text.replace('’', "'")
         draw.rectangle(location, fill=annotation_fill)
-        draw.text(
-            location.br.move(annotation_text_br_offset_x, annotation_text_br_offset_y),
-            text, annotation_text_fill, font=annotation_text_font)
+
+        if hasattr(annotation, 'text'):
+            text = annotation.text
+            text = text.replace('’', "'")
+            draw.text(
+                location.br.move(annotation_text_br_offset_x, annotation_text_br_offset_y),
+                text, annotation_text_fill, font=annotation_text_font)
 
     return image
 

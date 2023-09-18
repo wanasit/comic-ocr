@@ -179,14 +179,25 @@ class Rectangle(tuple):
         similarity = Rectangle.jaccard_similarity(self, rect)
         return similarity >= threshold
 
-    def can_represent(self, rect: RectangleLike, threshold_precision=0.7, threshold_recall=0.8) -> bool:
+    def can_represent(self, rect: RectangleLike,
+                      minimum_volume_precision=0.6,
+                      minimum_volume_recall=0.6,
+                      expected_volume_precision=0.8,
+                      expected_volume_recall=0.8) -> bool:
+        assert minimum_volume_precision <= expected_volume_precision
+        assert minimum_volume_recall <= expected_volume_recall
+
         intersect_rect = Rectangle.intersect_bounding_rect((self, rect))
         if not intersect_rect:
             return False
 
         volume_precision = intersect_rect.size.value / self.size.value
         volume_recall = intersect_rect.size.value / rect.size.value
-        return volume_precision >= threshold_precision and volume_recall >= threshold_recall
+        if volume_recall >= expected_volume_recall:
+            return volume_precision >= minimum_volume_precision
+        if volume_precision >= expected_volume_precision:
+            return volume_recall >= minimum_volume_recall
+        return False
 
     def __contains__(self, item: Union[RectangleLike, PointLike]) -> bool:
 
@@ -202,8 +213,10 @@ class Rectangle(tuple):
         return tuple.__contains__(self, item)
 
     def __repr__(self):
-        return f'Rect(size={self.width, self.height}, at={self[0], self[1]})'
+        return f'Rectangle.of_size({self.width, self.height}, at={self[0], self[1]})'
 
+    def __str__(self):
+        return f'Rect({self.width, self.height}, at={self[0], self[1]})'
 
 PointLike = Union[
     Tuple[int, int],

@@ -57,3 +57,13 @@ def test_rect_jaccard_similarity():
     rect_c = Rectangle.of_size((10, 10))
     assert Rectangle.jaccard_similarity(rect_a, rect_c) == 0.5
     assert Rectangle.jaccard_similarity(rect_c, rect_a) == 0.5
+
+
+def test_can_represent():
+    rect_larger = Rectangle.of_size((63, 18), at=(379, 705))
+    rect_smaller_inside = Rectangle.of_size((55, 13), at=(382, 707))
+    assert rect_larger.can_represent(rect_smaller_inside)
+
+    rect_larger = Rectangle.of_size((61, 18), at=(379, 719))
+    rect_smaller_inside = Rectangle.of_size((53, 12), at=(384, 722))
+    assert rect_larger.can_represent(rect_smaller_inside)

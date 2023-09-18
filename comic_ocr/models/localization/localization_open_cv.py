@@ -1,5 +1,6 @@
 """Localization methods based-on OpenCV (opencv-python or cv2)
 """
+import math
 from typing import Union, Tuple, List
 
 import cv2
@@ -34,7 +35,7 @@ def locate_lines_in_character_mask(
         input_tensor: Union[np.ndarray, torch.Tensor],
         input_threshold: float = 0.60,
         expand_detected_component: Tuple[int, int] = (2, 1),
-        expand_detected_line: Tuple[int, int] = (2, 2),
+        expand_detected_line: Tuple[int, int] = (1, 1),
         debugging: bool = False
 ) -> List[Rectangle]:
     """Locate the lines in the LocalizationModel's character mask output.
@@ -103,7 +104,7 @@ def group_lines_into_paragraphs(lines: List[Rectangle]) -> List[Tuple[Rectangle,
     return paragraphs
 
 
-def align_line_horizontal(block_a: Rectangle, block_b: Rectangle, x_min_margin=10, y_margin=2):
+def align_line_horizontal(block_a: Rectangle, block_b: Rectangle, x_min_margin=10, y_min_margin=2):
     """Returns true if two input character blocks are aligned into horizontal line."""
 
     # First, check if horizontal distance (x-axis) is too far apart
@@ -115,6 +116,8 @@ def align_line_horizontal(block_a: Rectangle, block_b: Rectangle, x_min_margin=1
     # Assume block_a is taller than block_b, we check if the block_b is vertically within block_a
     if block_a.height < block_b.height:
         block_a, block_b = block_b, block_a
+
+    y_margin = max(math.ceil(block_a.height / 5), y_min_margin)
     return (block_b.bottom <= block_a.bottom + y_margin) and (block_b.top >= block_a.top - y_margin)
 
 
