@@ -47,7 +47,7 @@ def default_lost_criterion_line():
 
 
 class LocalizationModel(nn.Module):
-    """An abstract for localization models (nn.Module).
+    """An abstraction for localization models (nn.Module).
 
     A localization model extends this abstraction should classify if input image's pixel a character or a line (Semantic
     Segmentation problem). Specifically, given an image as input, the model should output upto probability masks

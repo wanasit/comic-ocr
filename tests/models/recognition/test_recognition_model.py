@@ -1,47 +1,9 @@
 import torch
-from torch.utils.data import DataLoader
-
 from comic_ocr.models.recognition import encode, SUPPORT_DICT_SIZE
-from comic_ocr.models.recognition.crnn.crnn import CRNN
-from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset
-from comic_ocr.models.recognition.recognition_model import image_to_single_input_tensor, compute_ctc_loss
+
+from comic_ocr.models.recognition import recognition_dataset
+from comic_ocr.models.recognition import recognition_model
 from comic_ocr.utils.files import load_image, get_path_example_dir
-
-
-def test_image_to_single_input_tensor_scale_down():
-    image = load_image(get_path_example_dir('manga_annotated/normal_01.jpg'))
-    assert image.size == (707, 1000)
-    input_height = 30
-
-    input = image_to_single_input_tensor(input_height, image)
-    assert isinstance(input, torch.Tensor)
-    assert input.shape[0] == 3
-    assert input.shape[1] == input_height == 30
-    assert input.shape[2] == 21
-
-
-def test_image_to_single_input_tensor_scale_up():
-    image = load_image(get_path_example_dir('manga_annotated/normal_01.jpg'))
-    assert image.size == (707, 1000)
-    input_height = 2000
-
-    input = image_to_single_input_tensor(input_height, image)
-    assert isinstance(input, torch.Tensor)
-    assert input.shape[0] == 3
-    assert input.shape[1] == input_height == 2000
-    assert input.shape[2] == 1414
-
-
-def test_recognizer_loss_computing():
-    recognizer = CRNN()
-
-    dataset = RecognitionDataset.load_annotated_dataset(recognizer, get_path_example_dir('manga_annotated'))
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
-
-    batch = next(iter(dataloader))
-    loss = recognizer.compute_loss(batch)
-    assert isinstance(loss, torch.Tensor)
-    assert loss.shape == ()
 
 
 def test_ctc_loss():
@@ -54,20 +16,45 @@ def test_ctc_loss():
     output_sequence = torch.as_tensor(encoded_chars)
     model_output = torch.nn.functional.one_hot(output_sequence, num_classes=SUPPORT_DICT_SIZE).type(torch.float)
 
-    loss = compute_ctc_loss(
+    loss = recognition_model.compute_ctc_loss(
         model_output.unsqueeze(0),
         expected_output.unsqueeze(0),
         expected_output_length.unsqueeze(0)
     )
+    assert isinstance(loss, torch.Tensor)
+    assert loss.shape == ()
 
 
 def test_recognizer_basic():
+    recognizer = recognition_model.BasicCharBaseRecognitionModel()
+
+    dataset = recognition_dataset.RecognitionDatasetWithAugmentation.load_annotated_dataset(
+        get_path_example_dir('manga_annotated'))
+    dataloader = dataset.loader(batch_size=2, shuffle=False, num_workers=0)
+
+    batch = next(iter(dataloader))
+    loss = recognizer.compute_loss(batch)
+    assert isinstance(loss, torch.Tensor)
+    assert loss.shape == ()
+
+    line_image = dataset.get_line_image(0)
+    predicted_text = recognizer.recognize(line_image)
+    assert isinstance(predicted_text, str)
+
+
+def test_recognizer_crnn_basic():
+    from comic_ocr.models.recognition.crnn.crnn import CRNN
     recognizer = CRNN()
 
-    image = load_image(get_path_example_dir('manga_annotated/normal_01.jpg'))
-    input = image_to_single_input_tensor(recognizer.input_height, image)
+    dataset = recognition_dataset.RecognitionDatasetWithAugmentation.load_annotated_dataset(
+        get_path_example_dir('manga_annotated'))
+    dataloader = dataset.loader(batch_size=2, shuffle=False, num_workers=0)
 
-    output = recognizer(input.unsqueeze(0))[0]
-    assert isinstance(output, torch.Tensor)
-    assert output.shape[1] == SUPPORT_DICT_SIZE
+    batch = next(iter(dataloader))
+    loss = recognizer.compute_loss(batch)
+    assert isinstance(loss, torch.Tensor)
+    assert loss.shape == ()
 
+    line_image = dataset.get_line_image(0)
+    predicted_text = recognizer.recognize(line_image)
+    assert isinstance(predicted_text, str)

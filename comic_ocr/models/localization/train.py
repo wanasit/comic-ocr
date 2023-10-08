@@ -9,37 +9,13 @@ from torch import optim
 from torch.utils import tensorboard
 from tqdm import tqdm
 
+from comic_ocr.models import train_helpers
 from comic_ocr.models.localization import calculate_high_level_metrics
 from comic_ocr.models.localization import localization_dataset
 from comic_ocr.models.localization import localization_model
 from comic_ocr.utils import files
 
 logger = logging.getLogger(__name__)
-
-HistoricalMetrics = Dict[str, List[float]]
-UpdateCallback = Callable[[int, HistoricalMetrics, HistoricalMetrics], None]
-
-
-def callback_to_save_model(model, model_path) -> UpdateCallback:
-    def save(steps, training_metrics, validation_metrics):
-        Path(model_path).parent.mkdir(parents=True, exist_ok=True)
-        model.to('cpu')
-        torch.save(model, model_path)
-
-    return save
-
-
-def callback_to_save_model_on_increasing_metric(model, model_path, metric_name) -> UpdateCallback:
-    save_model_callback = callback_to_save_model(model, model_path)
-    metric_value = []
-
-    def save(steps, training_metrics, validation_metrics):
-        if not metric_value or metric_value[0] < validation_metrics[metric_name][-1]:
-            save_model_callback(steps, training_metrics, validation_metrics)
-            metric_value.clear()
-            metric_value.append(validation_metrics[metric_name][-1])
-
-    return save
 
 
 def compute_loss_for_each_sample(
@@ -73,7 +49,7 @@ def train(
         train_device: Optional[torch.device] = None,
         validate_dataset: Optional[localization_dataset.LocalizationDataset] = None,
         validate_device: Optional[torch.device] = None,
-        update_callback: Optional[UpdateCallback] = None,
+        update_callback: Optional[train_helpers.UpdateCallback] = None,
         update_every_n: Optional[int] = 20,
         update_validate_sample_size: Optional[int] = None,
         batch_size=10,
@@ -84,7 +60,7 @@ def train(
         tqdm_enable=True,
         tensorboard_log_enable=True,
         tensorboard_log_dir=None
-) -> Tuple[HistoricalMetrics, HistoricalMetrics]:
+) -> Tuple[train_helpers.HistoricalMetrics, train_helpers.HistoricalMetrics]:
     logger.info(f'Training {train_epoch_count} epochs, on {len(train_dataset)} samples ' +
                 f'({len(validate_dataset)} validation samples)' if validate_dataset else '')
 
@@ -102,8 +78,8 @@ def train(
     lr_scheduler = lr_scheduler if lr_scheduler else optim.lr_scheduler.StepLR(optimizer,
                                                                                step_size=int(max(train_steps * 0.8, 1)),
                                                                                gamma=0.1)
-    validation_metrics: HistoricalMetrics = defaultdict(list)
-    training_metrics: HistoricalMetrics = defaultdict(list)
+    validation_metrics: train_helpers.HistoricalMetrics = defaultdict(list)
+    training_metrics: train_helpers.HistoricalMetrics = defaultdict(list)
     step_counter = 0
     for i_epoch in range(train_epoch_count):
         with tqdm(total=len(train_dataset), disable=(not tqdm_enable)) as tepoch:
@@ -128,6 +104,9 @@ def train(
 
                 current_batch_loss = loss.item()
                 current_batch_size = batch['input'].size(0)
+                tepoch.update(current_batch_size)
+                tepoch.set_postfix(
+                    current_batch_loss=current_batch_loss)
 
                 if update_every_n and step_counter % update_every_n == 0:
                     model = model.eval()
@@ -157,10 +136,6 @@ def train(
 
                     if update_callback:
                         update_callback(step_counter, training_metrics, validation_metrics)
-
-                tepoch.update(current_batch_size)
-                tepoch.set_postfix(
-                    current_batch_loss=current_batch_loss)
 
     return training_metrics, validation_metrics
 
@@ -219,11 +194,11 @@ def _run_example():
     dataset = localization_dataset.LocalizationDataset.load_line_annotated_manga_dataset(
         files.get_path_project_dir('data/manga_line_annotated'))
 
-    save_model = callback_to_save_model_on_increasing_metric(model, model_path, 'line_level_precision')
+    save_model = train_helpers.callback_to_save_model_on_increasing_metric(model, model_path, 'line_level_precision')
 
     def update(epoch, training_losses, validation_metrics):
         print('Update')
-        save_model(epoch, training_losses, validation_metrics)
+        # save_model(epoch, training_losses, validation_metrics)
 
     validation_dataset = dataset.subset(to_idx=2)
     training_dataset = dataset.subset(from_idx=2, to_idx=10)

@@ -1,134 +1,170 @@
 import logging
 import os
-from typing import Optional, Callable
+import collections
+from typing import Optional
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils import tensorboard
 from tqdm import tqdm
 
-from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset
-from comic_ocr.models.recognition.recognition_model import RecognitionModel
-from comic_ocr.utils import get_path_project_dir
+from comic_ocr.models import train_helpers
+from comic_ocr.models.recognition import recognition_dataset, recognition_model, calculate_high_level_metrics
+from comic_ocr.utils import files
 
 logger = logging.getLogger(__name__)
 
 
 def train(
-        model: RecognitionModel,
-        training_dataset: RecognitionDataset,
-        validation_dataset: Optional[RecognitionDataset] = None,
-        validation_every_n: Optional[int] = 200,
-        epoch_count: int = 1,
-        epoch_callback: Optional[Callable] = None,
-        update_callback: Optional[Callable] = None,
-        update_every_n: Optional[int] = 200,
-        tqdm_disable=False,
+        model_name: str,
+        model: recognition_model.RecognitionModel,
+        train_dataset: recognition_dataset.RecognitionDataset,
+        train_epoch_count: int = 25,
+        train_device: Optional[torch.device] = None,
+        validate_dataset: Optional[recognition_dataset.RecognitionDataset] = None,
+        validate_device: Optional[torch.device] = None,
+        update_callback: Optional[train_helpers.UpdateCallback] = None,
+        update_every_n: Optional[int] = 20,
+        update_validate_sample_size: Optional[int] = None,
         batch_size=50,
         optimizer=None,
-        scheduler=None
+        lr_scheduler=None,
+        tqdm_enable=True,
+        tensorboard_log_enable=True,
+        tensorboard_log_dir=None
 ):
+    logger.info(f'Training {train_epoch_count} epochs, on {len(train_dataset)} samples ' +
+                f'({len(validate_dataset)} validation samples)' if validate_dataset else '')
+
+    writer_validate = None
+    writer_train = None
+    if tensorboard_log_enable:
+        if tensorboard_log_dir is None:
+            tensorboard_log_dir = files.get_path_project_dir(f'data/logs/{model_name}')
+        logger.info(f'Writing tensorboard logs at {tensorboard_log_dir}')
+        writer_validate = tensorboard.SummaryWriter(log_dir=f'{tensorboard_log_dir}/validate')
+        writer_train = tensorboard.SummaryWriter(log_dir=f'{tensorboard_log_dir}/train')
+
     # hack: try different optimizer
     optimizer = optimizer if optimizer else torch.optim.SGD(
         model.parameters(), lr=0.02, nesterov=True, weight_decay=1e-5, momentum=0.9)
-    scheduler = scheduler if scheduler else torch.optim.lr_scheduler.ReduceLROnPlateau(
+    lr_scheduler = lr_scheduler if lr_scheduler else torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, verbose=True, patience=5)
 
-    training_losses = []
-    validation_losses = []
-
-    logger.info(f'Training {epoch_count} epochs, on {len(training_dataset)} samples ' +
-                f'({len(validation_dataset)} validation samples)' if validation_dataset else '')
-
-    for i_epoch in range(epoch_count):
-
-        # currently, we can't have batch training because of the padding
-        # todo: support different batch size when it's possible
-        training_dataloader = DataLoader(training_dataset, batch_size=1, shuffle=True, num_workers=0)
-        valid_dataloader = DataLoader(validation_dataset, batch_size=1, shuffle=True, num_workers=0) \
-            if validation_dataset else None
-
-        with tqdm(total=len(training_dataset), disable=tqdm_disable) as tepoch:
+    validation_metrics: train_helpers.HistoricalMetrics = collections.defaultdict(list)
+    training_metrics: train_helpers.HistoricalMetrics = collections.defaultdict(list)
+    step_counter = 0
+    for i_epoch in range(train_epoch_count):
+        with tqdm(total=len(train_dataset), disable=(not tqdm_enable)) as tepoch:
             tepoch.set_description(f"Epoch {i_epoch}")
+            training_dataloader = train_dataset.loader(batch_size=batch_size, shuffle=True)
+            for batch in training_dataloader:
+                model = model.train()
+                step_counter += 1
 
-            batch_loss = 0.0
-            for i_batch, batch in enumerate(training_dataloader):
+                # Compute loss
                 optimizer.zero_grad()
                 loss = model.compute_loss(batch)
+
+                # Step loss / optimizer / lr_scheduler
                 loss.backward()
-
-                # hack: try tuning this later
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 5)  # TODO: try tuning this later
                 optimizer.step()
+                lr_scheduler.step(loss)
 
-                # Todo: remove this when we can set the real batch_size in dataloader
-                batch_loss += loss.item()
-                tepoch.update(1)
+                current_batch_loss = loss.item()
+                current_batch_size = batch['image'].shape[0]
+                tepoch.update(current_batch_size)
+                tepoch.set_postfix(
+                    current_batch_loss=current_batch_loss)
 
-                if tepoch.n % batch_size == 0:
-                    batch_loss_avg = batch_loss / batch_size
-                    batch_loss = 0
+                if update_every_n and step_counter % update_every_n == 0:
+                    model = model.eval()
 
-                    tepoch.set_postfix(training_batch_loss=batch_loss_avg)
-                    training_losses.append(batch_loss_avg)
+                    # Update stats on training_dataset (and write to tensorbaord)
+                    _validate_model(training_metrics, model, train_dataset,
+                                    batch_size=batch_size,
+                                    sample_size_limit=batch_size * 2,
+                                    device=validate_device)
+                    if writer_train:
+                        # TODO: Make this work on ReduceLROnPlateau
+                        # writer_train.add_scalar('lr', lr_scheduler.get_last_lr()[-1], step_counter)
+                        for k in training_metrics:
+                            writer_train.add_scalar(k, training_metrics[k][-1], step_counter)
 
-                if validation_every_n >= 0 and tepoch.n % validation_every_n == 0:
-                    if valid_dataloader:
-                        validation_losses.append(_calculate_validation_loss(model, valid_dataloader))
-                        scheduler.step(validation_losses[-1])
+                    if validate_dataset:
+                        # Update stats on validate_dataset (and write to tensorbaord)
+                        _validate_model(validation_metrics, model, validate_dataset, batch_size=batch_size,
+                                        sample_size_limit=update_validate_sample_size,
+                                        device=validate_device)
+                        if writer_validate:
+                            # TODO: Make this work on ReduceLROnPlateau
+                            # writer_validate.add_scalar('lr', lr_scheduler.get_last_lr()[-1], step_counter)
+                            for k in validation_metrics:
+                                writer_validate.add_scalar(k, validation_metrics[k][-1], step_counter)
 
-                if update_every_n >= 0 and tepoch.n % update_every_n == 0:
                     if update_callback:
-                        update_callback(tepoch.n, training_losses, validation_losses)
+                        update_callback(step_counter, training_metrics, validation_metrics)
 
-            if valid_dataloader:
-                validation_losses.append(_calculate_validation_loss(model, valid_dataloader))
-                scheduler.step(validation_losses[-1])
-
-            if epoch_callback:
-                epoch_callback(i_epoch, training_losses, validation_losses)
-
-    return (training_losses, validation_losses) if validation_dataset else (training_losses, None)
+    return training_metrics, validation_metrics
 
 
-def _calculate_validation_loss(model, valid_dataloader):
+def _validate_model(metrics, model, dataset, batch_size,
+                    sample_size_limit: Optional[int] = None,
+                    device: Optional[torch.device] = None):
+    device = device if device else torch.device('cpu')
+    model = model.to(device).eval()
+    loss = _calculate_avg_loss(model, dataset, batch_size=batch_size, sample_size_limit=sample_size_limit,
+                               device=device)
+    metrics['loss'].append(loss)
+    if len(dataset) > 0:
+        new_metrics = calculate_high_level_metrics(model, dataset, sample_size_limit=sample_size_limit, device=device)
+        for k in new_metrics:
+            metrics[k].append(new_metrics[k])
+
+
+def _calculate_avg_loss(
+        model: recognition_model.RecognitionModel,
+        dataset: recognition_dataset.RecognitionDataset,
+        batch_size: int,
+        sample_size_limit: Optional[int] = None,
+        device: Optional[torch.device] = None) -> float:
+    sample_size_limit = sample_size_limit if sample_size_limit else len(dataset)
+    dataset = dataset if sample_size_limit >= len(dataset) else dataset.shuffle().subset(to_idx=sample_size_limit)
+
     total_loss = 0
-    total_count = 0
     with torch.no_grad():
+        valid_dataloader = dataset.loader(batch_size=batch_size, num_workers=0)
         for i_batch, batch in enumerate(valid_dataloader):
-            loss = model.compute_loss(batch)
+            loss = model.compute_loss(batch, device=device)
             total_loss += loss.item()
-            total_count += batch['input'].size(0)
 
-    return total_loss / total_count
+    return total_loss / sample_size_limit
 
 
 if __name__ == '__main__':
     from comic_ocr.models.recognition.crnn.crnn import CRNN
     from comic_ocr.models.recognition.trocr.trocr import TrOCR
 
-    path_dataset = get_path_project_dir('data/output/generate_manga_dataset')
-    path_output_model = get_path_project_dir('data/output/models/recognition.bin')
-
-    if os.path.exists(path_output_model):
-        print('Loading an existing model...')
-        model = torch.load(path_output_model)
-    else:
-        print('Creating a new model...')
-        model = CRNN()
-
-    dataset = RecognitionDataset.load_generated_dataset(path_dataset)
+    path_dataset = files.get_path_project_dir('example/manga_generated')
+    dataset = recognition_dataset.RecognitionDataset.load_generated_dataset(path_dataset)
     print(f'Loaded generated manga dataset of size {len(dataset)}...')
 
-    validation_dataset = dataset.subset(to_idx=100)
-    training_dataset = dataset.subset(from_idx=100, to_idx=200)
+    model = CRNN.create_small_model()
+    # path_output_model = get_path_project_dir('data/output/models/recognition.bin')
+    # if os.path.exists(path_output_model):
+    #     print('Loading an existing model...')
+    #     model = torch.load(path_output_model)
 
-    training_dataset.get_line_image(0).show()
-    training_dataset.get_line_image(1).show()
-    validation_dataset.get_line_image(0).show()
-    validation_dataset.get_line_image(1).show()
+    validation_dataset = dataset.subset(to_idx=5)
+    training_dataset = dataset.subset(from_idx=5)
 
-    train(model,
-          training_dataset=training_dataset,
-          validation_dataset=validation_dataset,
-          epoch_callback=lambda: torch.save(model, path_output_model),
-          epoch_count=10)
+
+    def update(epoch, training_losses, validation_metrics):
+        print('Update')
+
+
+    train('test', model,
+          train_dataset=training_dataset,
+          validate_dataset=validation_dataset,
+          update_callback=update,
+          train_epoch_count=5)

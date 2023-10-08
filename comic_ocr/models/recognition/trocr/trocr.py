@@ -120,21 +120,25 @@ def pad_to_square(input_tensor: torch.Tensor) -> torch.Tensor:
 
 
 if __name__ == '__main__':
-    from comic_ocr.utils.files import get_path_example_dir, get_path_project_dir
-    from comic_ocr.utils.pytorch_model import get_total_parameters_count
-    from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset
-    from torch.utils.data import DataLoader
+    from comic_ocr.models.recognition.recognition_dataset import RecognitionDatasetWithAugmentation
+    from comic_ocr.utils import get_path_project_dir
 
-    recognizer = TrOCR.from_pretrain()
-    print('get_total_parameters_count', get_total_parameters_count(recognizer))
+    model = TrOCR.from_pretrain()
 
-    dataset = RecognitionDataset.load_annotated_dataset(recognizer, get_path_project_dir('data/manga_line_annotated'))
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
-    print(recognizer.recognize(dataset.get_line_image(0)), dataset.get_line_text(0))
+    dataset = RecognitionDatasetWithAugmentation.load_annotated_dataset(get_path_project_dir('example/manga_annotated'))
+    dataloader = dataset.loader(batch_size=2, shuffle=False, num_workers=0)
 
     batch = next(iter(dataloader))
-    loss = recognizer.compute_loss(batch)
+    loss = model.compute_loss(batch)
     print('loss', loss)
+
+    line_image = dataset.get_line_image(0)
+    line_text_expected = dataset.get_line_text(0)
+    line_text_recognized = model.recognize(line_image)
+    # line_image.show()
+
+    print('Expected : ', line_text_expected)
+    print('Recognized : ', line_text_recognized)
 
     # input = image_to_single_input_tensor(recognizer.input_height, image)
     # recognizer(input.unsqueeze(0))

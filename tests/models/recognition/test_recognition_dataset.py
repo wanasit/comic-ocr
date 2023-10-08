@@ -1,56 +1,49 @@
 from torch.utils.data import DataLoader
 
 from comic_ocr.models.recognition import encode
-from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset
+from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset, RecognitionDatasetWithAugmentation
 from comic_ocr.models.recognition.recognition_model import RecognitionModel, DEFAULT_INPUT_HEIGHT
 from comic_ocr.utils.files import get_path_example_dir
 
 
 def test_loading_annotated_dataset():
-    model = RecognitionModel()
-    dataset = RecognitionDataset.load_annotated_dataset(model, get_path_example_dir('manga_annotated'))
+    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'))
 
     assert len(dataset) > 0
 
     row = dataset[0]
-    assert row.keys() == {'input', 'output', 'output_length', 'text'}
-    assert row['input'].shape[0] == 3
-    assert row['input'].shape[1] == DEFAULT_INPUT_HEIGHT == 24
+    assert row.keys() == {'image', 'text', 'text_length', 'text_encoded'}
+    assert row['image'].shape[0] == 3
+    assert row['image'].shape[1] == 16
+    assert row['image'].shape[2] == 87
 
-    input_width = row['input'].shape[2]
-    assert input_width > 0
+    assert row['text_encoded'].shape[0] == dataset.text_max_length
+    assert row['text_encoded'].tolist() == encode('DEPRESSION', padded_output_size=dataset.text_max_length)
 
-    assert row['output'].shape[0] == dataset.output_max_len
-    assert row['output'].tolist() == encode('DEPRESSION', padded_output_size=dataset.output_max_len)
-
-    assert row['output_length'].shape[0] == 1
-    assert row['output_length'].tolist() == [len('DEPRESSION')]
+    assert row['text_length'].shape[0] == 1
+    assert row['text_length'].tolist() == [len('DEPRESSION')]
 
 
 def test_loading_generated_dataset():
-    model = RecognitionModel()
-    dataset = RecognitionDataset.load_generated_dataset(model, get_path_example_dir('manga_generated'))
+    dataset = RecognitionDataset.load_generated_dataset(get_path_example_dir('manga_generated'))
 
     assert len(dataset) > 0
 
     row = dataset[0]
-    assert row.keys() == {'input', 'output', 'output_length', 'text'}
-    assert row['input'].shape[0] == 3
-    assert row['input'].shape[1] == DEFAULT_INPUT_HEIGHT == 24
+    assert row.keys() == {'image', 'text', 'text_length', 'text_encoded'}
+    assert row['image'].shape[0] == 3
+    assert row['image'].shape[1] == 20
+    assert row['image'].shape[2] == 37
 
-    input_width = row['input'].shape[2]
-    assert input_width > 0
+    assert row['text_encoded'].shape[0] == dataset.text_max_length
+    assert row['text_encoded'].tolist() == encode('Hehe', padded_output_size=dataset.text_max_length)
 
-    assert row['output'].shape[0] == dataset.output_max_len
-    assert row['output'].tolist() == encode('Hehe', padded_output_size=dataset.output_max_len)
-
-    assert row['output_length'].shape[0] == 1
-    assert row['output_length'].tolist() == [len('Hehe')]
+    assert row['text_length'].shape[0] == 1
+    assert row['text_length'].tolist() == [len('Hehe')]
 
 
 def test_dataset_shuffle():
-    model = RecognitionModel()
-    dataset = RecognitionDataset.load_generated_dataset(model, get_path_example_dir('manga_generated'))
+    dataset = RecognitionDataset.load_generated_dataset(get_path_example_dir('manga_generated'))
 
     # Fixed the seed: [0, 1, 2] => [2, 0, 1]
     dataset = dataset.subset(from_idx=0, to_idx=3)
@@ -66,8 +59,7 @@ def test_dataset_shuffle():
 
 
 def test_dataset_merge():
-    model = RecognitionModel()
-    dataset = RecognitionDataset.load_generated_dataset(model, get_path_example_dir('manga_generated'))
+    dataset = RecognitionDataset.load_generated_dataset(get_path_example_dir('manga_generated'))
 
     # Merge: [0, 1, 2] + [2, 3, 4] => [0, 1, 2, 2, 3, 4]
     dataset_a = dataset.subset(from_idx=0, to_idx=3)
@@ -75,23 +67,55 @@ def test_dataset_merge():
     merged_dataset = RecognitionDataset.merge(dataset_a, dataset_b)
 
     assert len(merged_dataset) == 6
-    assert merged_dataset.transform_image_to_input_tensor == dataset_a.transform_image_to_input_tensor \
-           == model.transform_image_to_input_tensor
-    assert merged_dataset.get_line_image(0) == dataset.get_line_image(0)
-    assert merged_dataset.get_line_image(1) == dataset.get_line_image(1)
-    assert merged_dataset.get_line_image(2) == dataset.get_line_image(2)
-    assert merged_dataset.get_line_image(3) == dataset.get_line_image(2)
-    assert merged_dataset.get_line_image(4) == dataset.get_line_image(3)
-    assert merged_dataset.get_line_image(5) == dataset.get_line_image(4)
+    assert merged_dataset.get_line_image(0) == dataset.get_line_image(0) == dataset_a.get_line_image(0)
+    assert merged_dataset.get_line_image(1) == dataset.get_line_image(1) == dataset_a.get_line_image(1)
+    assert merged_dataset.get_line_image(2) == dataset.get_line_image(2) == dataset_a.get_line_image(2)
+    assert merged_dataset.get_line_image(3) == dataset.get_line_image(2) == dataset_b.get_line_image(0)
+    assert merged_dataset.get_line_image(4) == dataset.get_line_image(3) == dataset_b.get_line_image(1)
+    assert merged_dataset.get_line_image(5) == dataset.get_line_image(4) == dataset_b.get_line_image(2)
 
 
-def test_dataset_with_loader():
-    model = RecognitionModel()
-    dataset = RecognitionDataset.load_annotated_dataset(model, get_path_example_dir('manga_annotated'),
-                                                        random_padding_x=0, random_padding_y=0)
-    train_dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
+def test_dataset_repeat():
+    dataset = RecognitionDataset.load_generated_dataset(get_path_example_dir('manga_generated'))
+
+    # Merge: [0, 1, 2] => [0, 1, 2, 0, 1, 2, 0, 1, 2]
+    dataset = dataset.subset(from_idx=0, to_idx=3)
+    repeated_dataset = dataset.repeat(3)
+
+    assert len(repeated_dataset) == 9
+    assert repeated_dataset.get_line_image(3) == repeated_dataset.get_line_image(0) == dataset.get_line_image(0)
+    assert repeated_dataset.get_line_image(4) == repeated_dataset.get_line_image(1) == dataset.get_line_image(1)
+    assert repeated_dataset.get_line_image(5) == repeated_dataset.get_line_image(2) == dataset.get_line_image(2)
+    assert repeated_dataset.get_line_image(6) == repeated_dataset.get_line_image(3) == dataset.get_line_image(0)
+    assert repeated_dataset.get_line_image(7) == repeated_dataset.get_line_image(4) == dataset.get_line_image(1)
+    assert repeated_dataset.get_line_image(8) == repeated_dataset.get_line_image(5) == dataset.get_line_image(2)
+
+    assert repeated_dataset.get_line_text(3) == repeated_dataset.get_line_text(0) == dataset.get_line_text(0)
+    assert repeated_dataset.get_line_text(4) == repeated_dataset.get_line_text(1) == dataset.get_line_text(1)
+    assert repeated_dataset.get_line_text(5) == repeated_dataset.get_line_text(2) == dataset.get_line_text(2)
+    assert repeated_dataset.get_line_text(6) == repeated_dataset.get_line_text(3) == dataset.get_line_text(0)
+    assert repeated_dataset.get_line_text(7) == repeated_dataset.get_line_text(4) == dataset.get_line_text(1)
+    assert repeated_dataset.get_line_text(8) == repeated_dataset.get_line_text(5) == dataset.get_line_text(2)
+
+
+def test_dataset_loader():
+    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'))
+    train_dataloader = dataset.loader()
     batch = next(iter(train_dataloader))
 
-    assert batch['input'].shape == (1, 3, 24, 130)
-    assert batch['output'].shape == (1, 23)
-    assert batch['output_length'].shape == (1, 1)
+    assert batch['image'].shape == (1, 3, 16, 87)
+    assert batch['text_encoded'].shape == (1, 23)
+    assert batch['text_length'].shape == (1, 1)
+
+
+def test_dataset_with_augmentation_loader():
+    dataset = RecognitionDatasetWithAugmentation.load_annotated_dataset(get_path_example_dir('manga_annotated'))
+    assert dataset.get_line_image(0).size == (87, 16) # should be scaled to (108, 20)
+    assert dataset.get_line_image(1).size == (95, 20)
+    assert dataset.get_line_image(2).size == (42, 14) # should be scaled to (60, 20)
+
+    train_dataloader = dataset.loader(batch_size=3, num_workers=0)
+    batch = next(iter(train_dataloader))
+    assert batch['image'].shape == (3, 3, 20, 108)
+    assert batch['text_encoded'].shape == (3, 23)
+    assert batch['text_length'].shape == (3, 1)

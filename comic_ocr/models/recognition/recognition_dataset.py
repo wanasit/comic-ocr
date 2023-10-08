@@ -1,8 +1,12 @@
 from __future__ import annotations
+
+import math
 from random import Random
 from typing import List, Dict, Optional, Tuple, Union
 
 import torch
+import torch.nn.functional as F
+
 from PIL import Image
 from torch.utils.data import Dataset
 
@@ -10,162 +14,270 @@ import comic_ocr.dataset.annotated_manga as annotated_manga
 import comic_ocr.dataset.generated_manga as generated_manga
 
 from comic_ocr.models.recognition import encode
-from comic_ocr.models.recognition.recognition_model import TransformImageToTensor, RecognitionModel
-from comic_ocr.types import Rectangle
+from comic_ocr.models import transforms
+from comic_ocr.types import Rectangle, Size
 
 
 class RecognitionDataset(Dataset):
-    """
-    TODO: support input_max_width and add custom padding logic for images
+    """A torch dataset for evaluating a recognition model.
+
+    Each dataset entry is a text line. Each line includes the image, the location (rectangle) withing the image, and the
+    line's text (string). Because each line has a different size, the dataset should be load with batch size 1.
+
+    For training a recognition model, consider using `RecognitionDatasetWithAugmentation` instead.
     """
 
     def __init__(self,
-                 line_images: List[Image.Image],
+                 images: List[Image.Image],
+                 line_image_indexes: List[int],
+                 line_rectangles: List[Rectangle],
                  line_texts: List[str],
-                 transform_image_to_input_tensor: TransformImageToTensor,
-                 ):
-        assert len(line_images) == len(line_texts)
-        self.line_images = line_images
+                 image_to_tensor: transforms.ImageToTensorTransformFunc):
+        assert len(line_image_indexes) == len(line_rectangles) == len(line_texts)
+
+        self.images = images
+        self.line_image_indexes = line_image_indexes
+        self.line_rectangles = line_rectangles
         self.line_texts = [t.strip() for t in line_texts]
-        self.transform_image_to_input_tensor = transform_image_to_input_tensor
-        self.output_max_len = max((len(t) for t in self.line_texts))
+        self.image_to_tensor = image_to_tensor
+        self.text_max_length = max((len(t) for t in self.line_texts))
 
     def __len__(self):
-        return len(self.line_images)
+        return len(self.line_texts)
 
     def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
-        raw_image = self.line_images[idx]
-        raw_text = self.line_texts[idx]
-        input_tensor = self.transform_image_to_input_tensor(raw_image)
-        output_tensor = torch.tensor(encode(text=raw_text, padded_output_size=self.output_max_len))
-        output_length_tensor = torch.tensor([len(raw_text)])
+
+        text = self.line_texts[idx]
+        text_length = torch.tensor([len(text)])
+        text_encoded = torch.tensor(encode(text=text, padded_output_size=self.text_max_length))
+
+        image = self.get_line_image(idx)
+        image = self.image_to_tensor(image)
         return {
-            'text': raw_text,
-            'input': input_tensor,
-            'output': output_tensor,
-            'output_length': output_length_tensor
+            'image': image,
+            'text': text,
+            'text_length': text_length,
+            'text_encoded': text_encoded
         }
 
+    def loader(self, **kwargs):
+        kwargs.pop('batch_size', None)
+        kwargs.pop('num_workers', None)
+        return torch.utils.data.DataLoader(self, batch_size=1, num_workers=0, **kwargs)
+
     def get_line_image(self, idx):
-        return self.line_images[idx]
+        image_idx = self.line_image_indexes[idx]
+        line_rect = self.line_rectangles[idx]
+        image = self.images[image_idx]
+        return image.crop(line_rect)
 
     def get_line_text(self, idx):
         return self.line_texts[idx]
 
     def subset(self, from_idx: Optional[int] = None, to_idx: Optional[int] = None) -> RecognitionDataset:
         from_idx = from_idx if from_idx is not None else 0
-        to_idx = to_idx if to_idx is not None else len(self.line_images)
-        return RecognitionDataset(line_images=self.line_images[from_idx:to_idx],
-                                  line_texts=self.line_texts[from_idx:to_idx],
-                                  transform_image_to_input_tensor=self.transform_image_to_input_tensor)
+        to_idx = to_idx if to_idx is not None else len(self.line_texts)
+        current_image_indexes = self.line_image_indexes[from_idx:to_idx]
+
+        images = []
+        line_image_indexes = []
+        image_index_by_curent_image_index = {}
+        for idx in current_image_indexes:
+            if idx not in image_index_by_curent_image_index:
+                image_index_by_curent_image_index[idx] = len(images)
+                images.append(self.images[idx])
+            line_image_indexes.append(image_index_by_curent_image_index[idx])
+
+        return RecognitionDataset(
+            image_to_tensor=self.image_to_tensor,
+            images=images,
+            line_image_indexes=line_image_indexes,
+            line_rectangles=self.line_rectangles[from_idx:to_idx],
+            line_texts=self.line_texts[from_idx:to_idx])
 
     def shuffle(self, random_seed: any = '') -> RecognitionDataset:
-        indexes = list(range(len(self.line_images)))
+        indexes = list(range(len(self.line_texts)))
         random = Random(random_seed)
         random.shuffle(indexes)
 
-        line_images = [self.line_images[i] for i in indexes]
+        line_image_indexes = [self.line_image_indexes[i] for i in indexes]
+        line_rectangles = [self.line_rectangles[i] for i in indexes]
         line_texts = [self.line_texts[i] for i in indexes]
-        return RecognitionDataset(line_images=line_images, line_texts=line_texts,
-                                  transform_image_to_input_tensor=self.transform_image_to_input_tensor)
+        return RecognitionDataset(
+            image_to_tensor=self.image_to_tensor, images=self.images,
+            line_image_indexes=line_image_indexes,
+            line_rectangles=line_rectangles,
+            line_texts=line_texts
+        )
+
+    def repeat(self, n_times: int) -> RecognitionDataset:
+        line_image_indexes = self.line_image_indexes * n_times
+        line_rectangles = self.line_rectangles * n_times
+        line_texts = self.line_texts * n_times
+        return RecognitionDataset(
+            image_to_tensor=self.image_to_tensor, images=self.images,
+            line_image_indexes=line_image_indexes,
+            line_rectangles=line_rectangles,
+            line_texts=line_texts
+        )
 
     @staticmethod
     def merge(dataset_a: RecognitionDataset, dataset_b: RecognitionDataset) -> RecognitionDataset:
-        assert dataset_a.transform_image_to_input_tensor == dataset_b.transform_image_to_input_tensor, \
-            'Can only merge dataset with the same transforming. TODO: add this later'
+        assert dataset_a.image_to_tensor == dataset_b.image_to_tensor, \
+            'Can only merge dataset with the same image to tensor transform.'
 
-        line_images = dataset_a.line_images + dataset_b.line_images
+        images = dataset_a.images + dataset_b.images
+
+        appending_line_image_indexes = [len(dataset_a.images) + i for i in dataset_b.line_image_indexes]
+        line_image_indexes = dataset_a.line_image_indexes + appending_line_image_indexes
+        line_rectangles = dataset_a.line_rectangles + dataset_b.line_rectangles
         line_texts = dataset_a.line_texts + dataset_b.line_texts
-        return RecognitionDataset(line_images=line_images, line_texts=line_texts,
-                                  transform_image_to_input_tensor=dataset_a.transform_image_to_input_tensor)
+
+        return RecognitionDataset(image_to_tensor=dataset_a.image_to_tensor, images=images,
+                                  line_image_indexes=line_image_indexes,
+                                  line_rectangles=line_rectangles,
+                                  line_texts=line_texts)
 
     @staticmethod
     def load_annotated_dataset(
-            model: RecognitionModel,
             directory: str,
-            random_padding_x: Union[int, Tuple[int, int]] = (0, 5),
-            random_padding_y: Union[int, Tuple[int, int]] = (0, 4),
-            random_padding_copy_count: int = 1,
-            random_seed: any = ''
+            image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor
     ):
-        random = Random(random_seed)
         images, image_texts = annotated_manga.load_line_annotated_dataset(directory)
 
-        line_images = []
+        line_image_indexes = []
+        line_rectangles = []
         line_texts = []
-        for image, lines in zip(images, image_texts):
+        for i, lines in enumerate(image_texts):
             for line in lines:
                 if not line.text:
                     continue
-                for padding_copy_i in range(random_padding_copy_count):
-                    rect = _rect_with_random_padding(random, line.location, random_padding_x, random_padding_y)
-                    line_images.append(image.crop(rect))
-                    line_texts.append(line.text)
+
+                line_image_indexes.append(i)
+                line_rectangles.append(line.location)
+                line_texts.append(line.text)
 
         return RecognitionDataset(
-            line_images=line_images,
-            line_texts=line_texts,
-            transform_image_to_input_tensor=model.transform_image_to_input_tensor
+            image_to_tensor=image_to_tensor,
+            images=images,
+            line_image_indexes=line_image_indexes,
+            line_rectangles=line_rectangles,
+            line_texts=line_texts
         )
 
     @staticmethod
     def load_generated_dataset(
-            model: RecognitionModel,
             directory: str,
-            random_padding_x: Union[int, Tuple[int, int]] = (0, 5),
-            random_padding_y: Union[int, Tuple[int, int]] = (0, 5),
-            random_padding_copy_count: int = 1,
-            random_seed: any = ''
+            image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor
     ):
-        random = Random(random_seed)
         images, image_texts, _ = generated_manga.load_dataset(directory)
 
-        line_images = []
+        line_image_indexes = []
+        line_rectangles = []
         line_texts = []
-
-        for image, lines in zip(images, image_texts):
+        for i, lines in enumerate(image_texts):
             for line in lines:
-                for padding_copy_i in range(random_padding_copy_count):
-                    rect = _rect_with_random_padding(random, line.location, random_padding_x, random_padding_y)
-                    line_images.append(image.crop(rect))
-                    line_texts.append(line.text)
+                if not line.text:
+                    continue
+
+                line_image_indexes.append(i)
+                line_rectangles.append(line.location)
+                line_texts.append(line.text)
 
         return RecognitionDataset(
-            line_images=line_images,
-            line_texts=line_texts,
-            transform_image_to_input_tensor=model.transform_image_to_input_tensor
+            image_to_tensor=image_to_tensor,
+            images=images,
+            line_image_indexes=line_image_indexes,
+            line_rectangles=line_rectangles,
+            line_texts=line_texts
         )
 
 
-def _rect_with_random_padding(
-        random: Random,
-        rect: Rectangle,
-        random_padding_x: Union[int, Tuple[int, int]],
-        random_padding_y: Union[int, Tuple[int, int]],
-):
-    random_padding_x = (random_padding_x, random_padding_x) if isinstance(random_padding_x, int) else random_padding_x
-    random_padding_y = (random_padding_y, random_padding_y) if isinstance(random_padding_y, int) else random_padding_y
+class RecognitionDatasetWithAugmentation(RecognitionDataset):
+    """A torch dataset for training a recognition model.
 
-    padding_x = random.randint(random_padding_x[0], random_padding_x[1]) if random_padding_x else 0
-    padding_y = random.randint(random_padding_y[0], random_padding_y[1]) if random_padding_y else 0
-    return rect.expand((padding_x, padding_y))
+    This dataset augments the normal recognition dataset with random augmentations. This dataset supports batch loading
+    by resizing and padding the images to the maximum size of the batch.
+    """
+
+    def loader(self, **kwargs):
+        def collate_fn(batch):
+            # Scale all images to the same height, then pad them to the same width
+            max_height = max((b['image'].shape[-2] for b in batch))
+            resize_images = [_scale_image_tensor_to_height(i['image'], max_height) for i in batch]
+            max_width = max((i.shape[-1] for i in resize_images))
+            resize_images = [_pad_image_tensor_to_width(i, max_width) for i in resize_images]
+
+            resize_images = torch.stack(resize_images)
+            texts = [b['text'] for b in batch]
+            return {
+                'image': resize_images,
+                'text': texts,
+                'text_length': torch.stack([b['text_length'] for b in batch]),
+                'text_encoded': torch.stack([b['text_encoded'] for b in batch]),
+            }
+
+        return torch.utils.data.DataLoader(self, collate_fn=collate_fn, **kwargs)
+
+    def shuffle(self, random_seed: any = '') -> RecognitionDatasetWithAugmentation:
+        shuffled = super().shuffle(random_seed)
+        return RecognitionDatasetWithAugmentation.of_dataset(shuffled)
+
+    def subset(self, from_idx: Optional[int] = None,
+               to_idx: Optional[int] = None) -> RecognitionDatasetWithAugmentation:
+        subset = super().subset(from_idx, to_idx)
+        return RecognitionDatasetWithAugmentation.of_dataset(subset)
+
+    @staticmethod
+    def of_dataset(dataset: RecognitionDataset) -> RecognitionDatasetWithAugmentation:
+        return RecognitionDatasetWithAugmentation(
+            image_to_tensor=dataset.image_to_tensor,
+            images=dataset.images,
+            line_image_indexes=dataset.line_image_indexes,
+            line_rectangles=dataset.line_rectangles,
+            line_texts=dataset.line_texts
+        )
+
+    @staticmethod
+    def load_generated_dataset(
+            directory: str,
+            image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor
+    ):
+        dataset = RecognitionDataset.load_generated_dataset(directory, image_to_tensor)
+        return RecognitionDatasetWithAugmentation.of_dataset(dataset)
+
+    @staticmethod
+    def load_annotated_dataset(
+            directory: str,
+            image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor
+    ):
+        dataset = RecognitionDataset.load_annotated_dataset(directory, image_to_tensor)
+        return RecognitionDatasetWithAugmentation.of_dataset(dataset)
 
 
-if __name__ == '__main__':
-    from comic_ocr.utils import get_path_project_dir
+def _scale_image_tensor_to_height(image: torch.Tensor, height: int) -> torch.Tensor:
+    assert len(image.shape) == 3
+    scale_factor = height / image.shape[1]
+    return F.interpolate(image.unsqueeze(0), size=(height, int(image.shape[2] * scale_factor)), mode='bilinear',
+                         align_corners=False)
 
-    model = RecognitionModel()
 
-    dataset_annotated = RecognitionDataset.load_annotated_dataset(model,
-                                                                  get_path_project_dir('example/manga_annotated'))
-    dataset_annotated.get_line_image(0).show()
+def _pad_image_tensor_to_width(image: torch.Tensor, width: int) -> torch.Tensor:
+    assert len(image.shape) == 4
+    padding_width = width - image.shape[-1]
+    padding_x = (math.floor(padding_width / 2), math.ceil(padding_width / 2))
+    return F.pad(image, padding_x, mode='constant', value=0)[0]
 
-    dataset_annotated = RecognitionDataset.load_annotated_dataset(model,
-                                                                  get_path_project_dir('data/manga_line_annotated'))
-    dataset_annotated.get_line_image(0).show()
 
-    dataset_generated = RecognitionDataset.load_generated_dataset(model,
-                                                                  get_path_project_dir('example/manga_generated'))
-    dataset_generated.get_line_image(0).show()
-    dataset_generated.get_line_image(1).show()
-    dataset_generated.get_line_image(3).show()
+def _resize_line_image_tensor(image: torch.Tensor, size: Size) -> torch.Tensor:
+    # Scale image proportionally to fit the target height.
+    scale_factor = size.height / image.shape[1]
+    scaled_image = F.interpolate(image.unsqueeze(0), size=(size.height, int(image.shape[2] * scale_factor)),
+                                 mode='bilinear', align_corners=False)
+
+    # Pad image to fit the target width.
+    padding_width = size.width - scaled_image.shape[3]
+    padding_x = (math.floor(padding_width / 2), math.ceil(padding_width / 2))
+    padded_scaled_image = F.pad(scaled_image, padding_x, mode='constant', value=0)
+
+    return padded_scaled_image[0]

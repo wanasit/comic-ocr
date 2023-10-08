@@ -2,18 +2,10 @@ import os
 
 import torch
 from torch import nn
-
-import torch.nn.functional as F
-from torchvision.models import resnet18
-
-from comic_ocr.models.recognition.recognition_model import RecognitionModel, image_to_single_input_tensor
-
-# TODO: Remove this
-# Ref: https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial
-#os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+from comic_ocr.models.recognition import recognition_model
 
 
-class CRNN(RecognitionModel):
+class CRNN(recognition_model.CharBaseRecognitionModel):
     """
     A Text-Recognition Module based-on CRNN (Convolutional Recurrent Neural Network) framework:
     https://arxiv.org/abs/1507.05717
@@ -92,21 +84,22 @@ class BidirectionalRNNBlock(nn.Module):
 
 
 if __name__ == '__main__':
-    from comic_ocr.utils.files import get_path_project_dir
-    from comic_ocr.utils.pytorch_model import get_total_parameters_count
-    from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset
-    from torch.utils.data import DataLoader
+    from comic_ocr.models.recognition.recognition_dataset import RecognitionDatasetWithAugmentation
+    from comic_ocr.utils import get_path_project_dir
 
-    recognizer = CRNN.create_small_model()
-    print(get_total_parameters_count(recognizer))
+    model = CRNN.create_small_model()
 
-    # recognizer = CRNN.create()
-    # print(get_total_parameters_count(recognizer))
-
-    dataset = RecognitionDataset.load_annotated_dataset(recognizer, get_path_project_dir('data/manga_line_annotated'))
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
-    print(recognizer.recognize(dataset.get_line_image(0)), dataset.get_line_text(0))
+    dataset = RecognitionDatasetWithAugmentation.load_annotated_dataset(get_path_project_dir('example/manga_annotated'))
+    dataloader = dataset.loader(batch_size=2, shuffle=False, num_workers=0)
 
     batch = next(iter(dataloader))
-    loss = recognizer.compute_loss(batch)
+    loss = model.compute_loss(batch)
     print('loss', loss)
+
+    line_image = dataset.get_line_image(0)
+    line_text_expected = dataset.get_line_text(0)
+    line_text_recognized = model.recognize(line_image)
+    # line_image.show()
+
+    print('Expected : ', line_text_expected)
+    print('Recognized : ', line_text_recognized)

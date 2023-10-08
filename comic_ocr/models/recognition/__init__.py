@@ -8,8 +8,9 @@ from typing import Optional, List
 import torch
 
 from comic_ocr.models.recognition.encoding import encode, decode
-from comic_ocr.models.recognition.recognition_model import RecognitionModel, SUPPORT_DICT_SIZE
-from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset
+from comic_ocr.models.recognition.recognition_model import RecognitionModel, CharBaseRecognitionModel, \
+    BasicCharBaseRecognitionModel, SUPPORT_DICT_SIZE
+from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset, RecognitionDatasetWithAugmentation
 from comic_ocr.utils.files import PathLike, get_path_project_dir
 
 DEFAULT_LOCAL_TRAINED_MODEL_FILE = get_path_project_dir('trained_models/recognition.pth')
@@ -48,16 +49,20 @@ def load_model(
 
 def calculate_high_level_metrics(
         model: RecognitionModel,
-        dataset: RecognitionDataset
+        dataset: RecognitionDataset,
+        sample_size_limit: Optional[int] = None,
+        device: Optional[torch.device] = None
 ):
     assert len(dataset) > 0
     perfect_match_count = 0
 
     for i in range(len(dataset)):
+        if sample_size_limit and i >= sample_size_limit:
+            break
+
         line_text_expected = dataset.get_line_text(i)
         line_text_image = dataset.get_line_image(i)
-
-        line_text_actual = model.recognize(line_text_image)
+        line_text_actual = model.recognize(line_text_image, device=device)
 
         if line_text_actual == line_text_expected:
             perfect_match_count += 1
