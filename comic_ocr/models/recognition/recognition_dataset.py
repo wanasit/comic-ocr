@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from random import Random
-from typing import List, Dict, Optional, Tuple, Union
+from typing import List, Dict, Optional, Tuple, Union, Sequence
 
 import torch
 import torch.nn.functional as F
@@ -15,7 +15,7 @@ import comic_ocr.dataset.generated_manga as generated_manga
 
 from comic_ocr.models.recognition import encode
 from comic_ocr.models import transforms
-from comic_ocr.types import Rectangle, Size
+from comic_ocr.types import Rectangle
 
 
 class RecognitionDataset(Dataset):
@@ -69,9 +69,9 @@ class RecognitionDataset(Dataset):
         kwargs.pop('num_workers', None)
         return torch.utils.data.DataLoader(self, batch_size=1, num_workers=0, **kwargs)
 
-    def get_line_image(self, idx, extra_padding: int = 0) -> Image.Image:
+    def get_line_image(self, idx, padding: Union[int, Tuple[int, int]] = 0) -> Image.Image:
         image_idx = self._line_image_indexes[idx]
-        line_rect = self._line_rectangles[idx].expand(extra_padding)
+        line_rect = self._line_rectangles[idx].expand(padding)
         image = self._images[image_idx]
         return image.crop(line_rect)
 
@@ -205,10 +205,16 @@ class RecognitionDatasetWithAugmentation(RecognitionDataset):
     """
 
     def __init__(self,
+                 r: Random,
+                 choices_padding_width: Sequence[int] = (0,),
+                 choices_padding_height: Sequence[int] = (0,),
                  batch_height: Optional[int] = None,
                  enable_color_jitter: bool = True,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._r = r
+        self._choices_padding_width = choices_padding_width
+        self._choices_padding_height = choices_padding_height
         self._batch_height = batch_height
         image_transforms = []
         if enable_color_jitter:
@@ -218,6 +224,14 @@ class RecognitionDatasetWithAugmentation(RecognitionDataset):
         self._image_transform = transforms.Compose(image_transforms)
 
     @property
+    def choices_padding_width(self) -> Sequence[int]:
+        return self._choices_padding_width
+
+    @property
+    def choices_padding_height(self) -> Sequence[int]:
+        return self._choices_padding_height
+
+    @property
     def batch_height(self) -> Optional[int]:
         return self._batch_height
 
@@ -225,8 +239,8 @@ class RecognitionDatasetWithAugmentation(RecognitionDataset):
     def image_transform(self) -> transforms.TensorTransformFunc:
         return self._image_transform
 
-    def __getitem__(self, index):
-        item = super().__getitem__(index)
+    def __getitem__(self, idx):
+        item = super().__getitem__(idx)
         image = item['image']
         image = self._image_transform(image)
         return {
@@ -236,19 +250,25 @@ class RecognitionDatasetWithAugmentation(RecognitionDataset):
 
     def loader(self, **kwargs):
         def collate_fn(batch):
+            images = [b['image'].unsqueeze(0) for b in batch]
+            images = [_pad_random_choices(
+                self._r, i,
+                choices_padding_width=self._choices_padding_width, choices_padding_height=self._choices_padding_height)
+                for i in images]
+
             # Scale all images to the same height, then pad them to the same width
             batch_height = self._batch_height
             if batch_height is None:
-                batch_height = max((b['image'].shape[-2] for b in batch))
+                batch_height = max((i.shape[-2] for i in images))
+            images = [_scale_image_tensor_to_height(i, batch_height) for i in images]
+            max_width = max((i.shape[-1] for i in images))
+            images = [_pad_image_tensor_to_width(i, max_width) for i in images]
 
-            resize_images = [_scale_image_tensor_to_height(i['image'], batch_height) for i in batch]
-            max_width = max((i.shape[-1] for i in resize_images))
-            resize_images = [_pad_image_tensor_to_width(i, max_width) for i in resize_images]
-
-            resize_images = torch.stack(resize_images)
+            images = [i[0] for i in images]
+            images = torch.stack(images)
             texts = [b['text'] for b in batch]
             return {
-                'image': resize_images,
+                'image': images,
                 'text': texts,
                 'text_length': torch.stack([b['text_length'] for b in batch]),
                 'text_encoded': torch.stack([b['text_encoded'] for b in batch]),
@@ -261,6 +281,8 @@ class RecognitionDatasetWithAugmentation(RecognitionDataset):
         shuffled = RecognitionDatasetWithAugmentation.of_dataset(shuffled)
         shuffled._batch_height = self._batch_height
         shuffled._image_transform = self._image_transform
+        shuffled._choices_padding_width = self._choices_padding_width
+        shuffled._choices_padding_height = self._choices_padding_height
         return shuffled
 
     def subset(self, from_idx: Optional[int] = None,
@@ -269,6 +291,8 @@ class RecognitionDatasetWithAugmentation(RecognitionDataset):
         subset = RecognitionDatasetWithAugmentation.of_dataset(subset)
         subset._batch_height = self._batch_height
         subset._image_transform = self._image_transform
+        subset._choices_padding_width = self._choices_padding_width
+        subset._choices_padding_height = self._choices_padding_height
         return subset
 
     def repeat(self, n_times: int) -> RecognitionDatasetWithAugmentation:
@@ -276,17 +300,22 @@ class RecognitionDatasetWithAugmentation(RecognitionDataset):
         repeated = RecognitionDatasetWithAugmentation.of_dataset(repeated)
         repeated._batch_height = self._batch_height
         repeated._image_transform = self._image_transform
+        repeated._choices_padding_width = self._choices_padding_width
+        repeated._choices_padding_height = self._choices_padding_height
         return repeated
 
     @staticmethod
     def of_dataset(dataset: RecognitionDataset,
+                   r: Optional[Random] = None,
                    **kwargs) -> RecognitionDatasetWithAugmentation:
+        r = r if r is not None else Random()
         return RecognitionDatasetWithAugmentation(
             image_to_tensor=dataset._image_to_tensor,
             images=dataset._images,
             line_image_indexes=dataset._line_image_indexes,
             line_rectangles=dataset._line_rectangles,
             line_texts=dataset._line_texts,
+            r=r,
             **kwargs
         )
 
@@ -310,28 +339,23 @@ class RecognitionDatasetWithAugmentation(RecognitionDataset):
 
 
 def _scale_image_tensor_to_height(image: torch.Tensor, height: int) -> torch.Tensor:
-    assert len(image.shape) == 3
-    scale_factor = height / image.shape[1]
-    return F.interpolate(image.unsqueeze(0), size=(height, int(image.shape[2] * scale_factor)), mode='bilinear',
+    assert len(image.shape) == 4
+    scale_factor = height / image.shape[-2]
+    return F.interpolate(image, size=(height, int(image.shape[-1] * scale_factor)), mode='bilinear',
                          align_corners=False)
+
+
+def _pad_random_choices(r: Random, image: torch.Tensor, choices_padding_width, choices_padding_height) -> torch.Tensor:
+    assert len(image.shape) == 4
+    padding_width = r.choice(choices_padding_width)
+    padding_height = r.choice(choices_padding_height)
+    padding_y = (math.floor(padding_height / 2), math.ceil(padding_height / 2))
+    padding_x = (math.floor(padding_width / 2), math.ceil(padding_width / 2))
+    return F.pad(image, padding_x + padding_y, mode='constant', value=1.0)
 
 
 def _pad_image_tensor_to_width(image: torch.Tensor, width: int) -> torch.Tensor:
     assert len(image.shape) == 4
     padding_width = width - image.shape[-1]
     padding_x = (math.floor(padding_width / 2), math.ceil(padding_width / 2))
-    return F.pad(image, padding_x, mode='constant', value=1.0)[0]
-
-
-def _resize_line_image_tensor(image: torch.Tensor, size: Size) -> torch.Tensor:
-    # Scale image proportionally to fit the target height.
-    scale_factor = size.height / image.shape[1]
-    scaled_image = F.interpolate(image.unsqueeze(0), size=(size.height, int(image.shape[2] * scale_factor)),
-                                 mode='bilinear', align_corners=False)
-
-    # Pad image to fit the target width.
-    padding_width = size.width - scaled_image.shape[3]
-    padding_x = (math.floor(padding_width / 2), math.ceil(padding_width / 2))
-    padded_scaled_image = F.pad(scaled_image, padding_x, mode='constant', value=0)
-
-    return padded_scaled_image[0]
+    return F.pad(image, padding_x, mode='constant', value=1.0)

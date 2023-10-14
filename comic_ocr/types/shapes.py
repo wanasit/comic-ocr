@@ -170,7 +170,7 @@ class Rectangle(tuple):
     def move(self, unit_x: int, unit_y: int) -> Rectangle:
         return Rectangle((self[0] + unit_x, self[1] + unit_y, self[2] + unit_x, self[3] + unit_y))
 
-    def expand(self, unit: Union[int, Tuple]) -> Rectangle:
+    def expand(self, unit: Union[int, Tuple[int, int]]) -> Rectangle:
         unit_x = unit if isinstance(unit, int) else unit[0]
         unit_y = unit if isinstance(unit, int) else unit[1]
         return Rectangle((self[0] - unit_x, self[1] - unit_y, self[2] + unit_x, self[3] + unit_y))

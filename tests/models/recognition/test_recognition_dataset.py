@@ -114,7 +114,9 @@ def test_dataset_with_augmentation_creation():
     assert dataset.get_line_image(2).size == (42, 14)  # should be scaled to (72, 24)
 
     dataset_with_augmentation = RecognitionDatasetWithAugmentation.of_dataset(dataset, batch_height=24,
-                                                                              enable_color_jitter=True)
+                                                                              enable_color_jitter=True,
+                                                                              choices_padding_width=[0, 1, 2, 3],
+                                                                              choices_padding_height=[0, 1, 2, 3])
     assert len(dataset) == len(dataset_with_augmentation)
     assert dataset.get_line_image(0) == dataset_with_augmentation.get_line_image(0)
     assert dataset.get_line_image(1) == dataset_with_augmentation.get_line_image(1)
@@ -123,16 +125,22 @@ def test_dataset_with_augmentation_creation():
     assert len(dataset_with_augmentation_subset) == 3
     assert dataset_with_augmentation.image_transform == dataset_with_augmentation_subset.image_transform
     assert dataset_with_augmentation.batch_height == dataset_with_augmentation.batch_height
+    assert dataset_with_augmentation.choices_padding_width == dataset_with_augmentation_subset.choices_padding_width
+    assert dataset_with_augmentation.choices_padding_height == dataset_with_augmentation_subset.choices_padding_height
 
     dataset_with_augmentation_repeated = dataset_with_augmentation_subset.repeat(2)
     assert len(dataset_with_augmentation_repeated) == 6
     assert dataset_with_augmentation_repeated.image_transform == dataset_with_augmentation_subset.image_transform
     assert dataset_with_augmentation_repeated.batch_height == dataset_with_augmentation.batch_height
+    assert dataset_with_augmentation_repeated.choices_padding_width == dataset_with_augmentation_subset.choices_padding_width
+    assert dataset_with_augmentation_repeated.choices_padding_height == dataset_with_augmentation_subset.choices_padding_height
 
     dataset_with_augmentation_shuffled = dataset_with_augmentation_repeated.shuffle()
     assert len(dataset_with_augmentation_shuffled) == 6
     assert dataset_with_augmentation_shuffled.image_transform == dataset_with_augmentation_subset.image_transform
     assert dataset_with_augmentation_shuffled.batch_height == dataset_with_augmentation.batch_height
+    assert dataset_with_augmentation_shuffled.choices_padding_width == dataset_with_augmentation_subset.choices_padding_width
+    assert dataset_with_augmentation_shuffled.choices_padding_height == dataset_with_augmentation_subset.choices_padding_height
 
 
 def test_dataset_with_augmentation_loader():
@@ -168,5 +176,31 @@ def test_dataset_with_augmentation_loader_with_batch_height():
     train_dataloader = shuffled_dataset.loader(batch_size=3, num_workers=0)
     batch = next(iter(train_dataloader))
     assert batch['image'].shape == (3, 3, 24, 130)
+    assert batch['text_encoded'].shape == (3, 10)
+    assert batch['text_length'].shape == (3, 1)
+
+
+def test_dataset_with_augmentation_loader_with_random_padding():
+    dataset = RecognitionDatasetWithAugmentation.load_annotated_dataset(get_path_example_dir('manga_annotated'),
+                                                                        batch_height=24,
+                                                                        choices_padding_width=[4],
+                                                                        choices_padding_height=[2])
+    assert dataset.get_line_image(0).size == (87, 16)  # should be padded to (91, 18), then scaled to (121, 24)
+    assert dataset.get_line_image(1).size == (95, 20)  # should be padded to (99, 22), then scaled to (108, 24)
+    assert dataset.get_line_image(2).size == (42, 14)  # should be padded to (46, 16), then scaled to (69, 24)
+
+    dataset = dataset.subset(from_idx=0, to_idx=3)
+    assert dataset.text_max_length == 10
+
+    train_dataloader = dataset.loader(batch_size=3, num_workers=0)
+    batch = next(iter(train_dataloader))
+    assert batch['image'].shape == (3, 3, 24, 121)
+    assert batch['text_encoded'].shape == (3, 10)
+    assert batch['text_length'].shape == (3, 1)
+
+    shuffled_dataset = dataset.shuffle()
+    train_dataloader = shuffled_dataset.loader(batch_size=3, num_workers=0)
+    batch = next(iter(train_dataloader))
+    assert batch['image'].shape == (3, 3, 24, 121)
     assert batch['text_encoded'].shape == (3, 10)
     assert batch['text_length'].shape == (3, 1)
