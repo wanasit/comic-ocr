@@ -138,11 +138,18 @@ class CharBaseRecognitionModel(RecognitionModel):
         expected_output_length = dataset_batch['text_length']
         image_tensor = dataset_batch['image']
         image_tensor = self._resize_tensor_to_input_height(image_tensor)
+
+        if device is not None:
+            expected_output = expected_output.to(device)
+            expected_output_length = expected_output_length.to(device)
+            image_tensor = image_tensor.to(device)
+            self.to(device)
+
         return compute_ctc_loss(self(image_tensor), expected_output, expected_output_length)
 
     def recognize(self, tensor_or_image: Union[Image, torch.Tensor], device: Optional[torch.device] = None) -> str:
-        prediction = self.predict_encoded_chars(tensor_or_image)
-        return decode(prediction[0].numpy())
+        prediction = self.predict_encoded_chars(tensor_or_image, device=device)
+        return decode(prediction[0].cpu().numpy())
 
     def predict_encoded_chars(
             self,
@@ -156,6 +163,10 @@ class CharBaseRecognitionModel(RecognitionModel):
             input_tensor = input_tensor.unsqueeze(0)
 
         input_tensor = self._resize_tensor_to_input_height(input_tensor)
+        if device is not None:
+            input_tensor = input_tensor.to(device)
+            self.to(device)
+
         output = self(input_tensor)  # output.shape = [<batch>, <input_width>, SUPPORT_DICT_SIZE]
         _, prediction = output.max(2)  # prediction = [<batch>, <input_width>]
         return prediction

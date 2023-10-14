@@ -65,5 +65,5 @@ def test_can_represent():
     assert rect_larger.can_represent(rect_smaller_inside)
 
     rect_larger = Rectangle.of_size((61, 18), at=(379, 719))
-    rect_smaller_inside = Rectangle.of_size((53, 12), at=(384, 722))
+    rect_smaller_inside = Rectangle.of_size((53, 16), at=(384, 720))
     assert rect_larger.can_represent(rect_smaller_inside)

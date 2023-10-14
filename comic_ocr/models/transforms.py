@@ -5,9 +5,15 @@ import torch
 from PIL import Image
 from torchvision.transforms import transforms
 
+ImageToTensorTransformFunc = Callable[[Union[Image.Image, torch.Tensor]], torch.Tensor]
+TensorTransformFunc = Callable[[torch.Tensor], torch.Tensor]
+
+# Re-export torchvision.transforms
+Compose = transforms.Compose
+ColorJitter = transforms.ColorJitter
+
 TRANSFORM_TO_TENSOR = transforms.PILToTensor()
 
-ImageToTensorTransformFunc = Callable[[Union[Image.Image, torch.Tensor]], torch.Tensor]
 
 
 class AddGaussianNoise(object):

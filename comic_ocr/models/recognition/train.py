@@ -48,7 +48,7 @@ def train(
     optimizer = optimizer if optimizer else torch.optim.SGD(
         model.parameters(), lr=0.02, nesterov=True, weight_decay=1e-5, momentum=0.9)
     lr_scheduler = lr_scheduler if lr_scheduler else torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, verbose=True, patience=5)
+        optimizer, verbose=True, patience=3)
 
     validation_metrics: train_helpers.HistoricalMetrics = collections.defaultdict(list)
     training_metrics: train_helpers.HistoricalMetrics = collections.defaultdict(list)
@@ -63,13 +63,12 @@ def train(
 
                 # Compute loss
                 optimizer.zero_grad()
-                loss = model.compute_loss(batch)
+                loss = model.compute_loss(batch, device=train_device)
 
                 # Step loss / optimizer / lr_scheduler
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 5)  # TODO: try tuning this later
                 optimizer.step()
-                lr_scheduler.step(loss)
 
                 current_batch_loss = loss.item()
                 current_batch_size = batch['image'].shape[0]
@@ -101,6 +100,11 @@ def train(
                             # writer_validate.add_scalar('lr', lr_scheduler.get_last_lr()[-1], step_counter)
                             for k in validation_metrics:
                                 writer_validate.add_scalar(k, validation_metrics[k][-1], step_counter)
+
+                    if validate_dataset:
+                        lr_scheduler.step(validation_metrics['loss'][-1])
+                    else:
+                        lr_scheduler.step(training_metrics['loss'][-1])
 
                     if update_callback:
                         update_callback(step_counter, training_metrics, validation_metrics)
