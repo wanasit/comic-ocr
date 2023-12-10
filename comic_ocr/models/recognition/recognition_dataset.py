@@ -304,6 +304,15 @@ class RecognitionDatasetWithAugmentation(RecognitionDataset):
         repeated._choices_padding_height = self._choices_padding_height
         return repeated
 
+    def without_augmentation(self) -> RecognitionDataset:
+        return RecognitionDataset(
+            image_to_tensor=self._image_to_tensor,
+            images=self._images,
+            line_image_indexes=self._line_image_indexes,
+            line_rectangles=self._line_rectangles,
+            line_texts=self._line_texts
+        )
+
     @staticmethod
     def of_dataset(dataset: RecognitionDataset,
                    r: Optional[Random] = None,

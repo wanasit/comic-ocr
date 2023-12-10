@@ -3,4 +3,5 @@ torchvision
 opencv-python>=4.5.4.60
 numpy>=1.21
 Pillow>=9.1
+textdistance>=4
 tqdm>=4

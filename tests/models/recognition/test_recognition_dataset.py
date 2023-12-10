@@ -1,4 +1,4 @@
-from torch.utils.data import DataLoader
+import torch
 
 from comic_ocr.models.recognition import encode
 from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset, RecognitionDatasetWithAugmentation
@@ -141,6 +141,28 @@ def test_dataset_with_augmentation_creation():
     assert dataset_with_augmentation_shuffled.batch_height == dataset_with_augmentation.batch_height
     assert dataset_with_augmentation_shuffled.choices_padding_width == dataset_with_augmentation_subset.choices_padding_width
     assert dataset_with_augmentation_shuffled.choices_padding_height == dataset_with_augmentation_subset.choices_padding_height
+
+
+def test_dataset_with_augmentation_transform():
+    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'))
+    assert dataset.get_line_image(0).size == (87, 16)  # should be scaled to (130, 24)
+    assert dataset.get_line_image(1).size == (95, 20)  # should be scaled to (114, 24)
+    assert dataset.get_line_image(2).size == (42, 14)  # should be scaled to (72, 24)
+
+    dataset_with_augmentation = RecognitionDatasetWithAugmentation.of_dataset(dataset, batch_height=24,
+                                                                              enable_color_jitter=True,
+                                                                              choices_padding_width=[0, 1, 2, 3],
+                                                                              choices_padding_height=[0, 1, 2, 3])
+    dataset_without_augmentation = dataset_with_augmentation.without_augmentation()
+    assert isinstance(dataset_without_augmentation, RecognitionDataset)
+    assert len(dataset) == len(dataset_without_augmentation)
+
+    dataset_loader = dataset.loader()
+    dataset_without_augmentation_loader = dataset_without_augmentation.loader()
+    for dataset_b, dataset_without_augmentation_b in zip(dataset_loader, dataset_without_augmentation_loader):
+        assert torch.equal(dataset_b['image'], dataset_without_augmentation_b['image'])
+        assert torch.equal(dataset_b['text_encoded'], dataset_without_augmentation_b['text_encoded'])
+        assert torch.equal(dataset_b['text_length'], dataset_without_augmentation_b['text_length'])
 
 
 def test_dataset_with_augmentation_loader():

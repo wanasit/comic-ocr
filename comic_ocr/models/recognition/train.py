@@ -8,7 +8,7 @@ from torch.utils import tensorboard
 from tqdm import tqdm
 
 from comic_ocr.models import train_helpers
-from comic_ocr.models.recognition import recognition_dataset, recognition_model, calculate_high_level_metrics
+from comic_ocr.models.recognition import recognition_dataset, recognition_model, recognition_utils
 from comic_ocr.utils import files
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ def train(
                     # Update stats on training_dataset (and write to tensorbaord)
                     _validate_model(training_metrics, model, train_dataset,
                                     batch_size=batch_size,
-                                    sample_size_limit=batch_size * 2,
+                                    sample_size_limit=batch_size * 10,
                                     device=validate_device)
                     if writer_train:
                         # TODO: Make this work on ReduceLROnPlateau
@@ -121,7 +121,8 @@ def _validate_model(metrics, model, dataset, batch_size,
                                device=device)
     metrics['loss'].append(loss)
     if len(dataset) > 0:
-        new_metrics = calculate_high_level_metrics(model, dataset, sample_size_limit=sample_size_limit, device=device)
+        new_metrics = recognition_utils.calculate_high_level_metrics(model, dataset,
+                                                                     sample_size_limit=sample_size_limit, device=device)
         for k in new_metrics:
             metrics[k].append(new_metrics[k])
 
@@ -140,7 +141,7 @@ def _calculate_avg_loss(
         valid_dataloader = dataset.loader(batch_size=batch_size, num_workers=0)
         for i_batch, batch in enumerate(valid_dataloader):
             loss = model.compute_loss(batch, device=device)
-            total_loss += loss.item()
+            total_loss += (loss.item() * batch['image'].shape[0])
 
     return total_loss / sample_size_limit
 
