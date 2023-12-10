@@ -43,9 +43,26 @@ def test_recognizer_basic():
 
 
 def test_recognizer_crnn_basic():
-    from comic_ocr.models.recognition.crnn.crnn import CRNN
+    from comic_ocr.models.recognition.crnn import CRNN
     recognizer = CRNN()
 
+    dataset = recognition_dataset.RecognitionDatasetWithAugmentation.load_annotated_dataset(
+        get_path_example_dir('manga_annotated'))
+    dataloader = dataset.loader(batch_size=2, shuffle=False, num_workers=0)
+
+    batch = next(iter(dataloader))
+    loss = recognizer.compute_loss(batch)
+    assert isinstance(loss, torch.Tensor)
+    assert loss.shape == ()
+
+    line_image = dataset.get_line_image(0)
+    predicted_text = recognizer.recognize(line_image)
+    assert isinstance(predicted_text, str)
+
+
+def test_recognizer_fcn_basic():
+    from comic_ocr.models.recognition.fcn import FCN
+    recognizer = FCN()
     dataset = recognition_dataset.RecognitionDatasetWithAugmentation.load_annotated_dataset(
         get_path_example_dir('manga_annotated'))
     dataloader = dataset.loader(batch_size=2, shuffle=False, num_workers=0)
