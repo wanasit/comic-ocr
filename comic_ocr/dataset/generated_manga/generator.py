@@ -10,7 +10,7 @@ from comic_ocr.dataset.generated_manga.text_area import TextArea
 from comic_ocr.dataset.generated_manga.text_bubble import TextBubble
 from comic_ocr.dataset.generated_manga.text_rect import TextRect
 from comic_ocr.types import Rectangle, Point, Drawable, Size
-from comic_ocr.utils.files import get_path_example_dir, load_images, load_texts
+from comic_ocr.utils import examples
 
 
 @dataclass
@@ -32,9 +32,9 @@ class MangaGenerator():
             choices_text_counts: Optional[List[int]] = None,
             random_salt: str = ''
     ):
-        choices_drawings = choices_drawings if choices_drawings else load_example_drawing()
-        choices_texts = choices_texts if choices_texts else load_example_texts()
-        choices_fonts = choices_fonts if choices_fonts else load_example_fonts()
+        choices_drawings = choices_drawings if choices_drawings else examples.load_example_drawing()
+        choices_texts = choices_texts if choices_texts else examples.load_example_texts()
+        choices_fonts = choices_fonts if choices_fonts else examples.load_example_fonts()
         choices_text_counts = choices_text_counts if choices_text_counts else (5, 6)
         return MangaGenerator(
             choices_drawings=choices_drawings,
@@ -78,33 +78,6 @@ def generate(
         random, image, text_count, choices_texts=choices_texts, choices_font=choices_fonts)
 
     return image, text_areas
-
-
-# ------------------
-
-current_module_dir = os.path.dirname(__file__)
-project_root_dir = current_module_dir + '/../../..'
-
-
-def load_example_fonts() -> List[ImageFont.ImageFont]:
-    example_font_dir = get_path_example_dir() + '/fonts/'
-    return \
-        [ImageFont.truetype(example_font_dir + 'Komika_Text.ttf', size=15)] + \
-        [ImageFont.truetype(example_font_dir + 'Komika_Text.ttf', size=20)] + \
-        [ImageFont.truetype(example_font_dir + 'Cool Cat.ttf', size=16)] * 3 + \
-        [ImageFont.truetype(example_font_dir + 'Cool Cat.ttf', size=21)]
-
-
-def load_example_drawing() -> List[Image.Image]:
-    return load_images(get_path_example_dir() + '/drawings/*.jpg')[0]
-
-
-def load_example_texts() -> List[str]:
-    return load_texts(get_path_example_dir() + '/text/texts.txt')
-
-
-# ------------------
-
 
 def _draw_random_drawing(
         random: Random,
