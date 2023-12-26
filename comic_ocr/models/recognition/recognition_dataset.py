@@ -12,10 +12,11 @@ from torch.utils.data import Dataset
 
 import comic_ocr.dataset.annotated_manga as annotated_manga
 import comic_ocr.dataset.generated_manga as generated_manga
+import comic_ocr.dataset.generated_single_line as generated_single_line
 
 from comic_ocr.models.recognition import encode
 from comic_ocr.models import transforms
-from comic_ocr.types import Rectangle
+from comic_ocr.types import Rectangle, PathLike
 
 
 class RecognitionDataset(Dataset):
@@ -144,7 +145,7 @@ class RecognitionDataset(Dataset):
 
     @staticmethod
     def load_annotated_dataset(
-            directory: str,
+            directory: PathLike,
             image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor
     ):
         images, image_texts = annotated_manga.load_line_annotated_dataset(directory)
@@ -171,7 +172,7 @@ class RecognitionDataset(Dataset):
 
     @staticmethod
     def load_generated_dataset(
-            directory: str,
+            directory: PathLike,
             image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor
     ):
         images, image_texts, _ = generated_manga.load_dataset(directory)
@@ -195,6 +196,21 @@ class RecognitionDataset(Dataset):
             line_rectangles=line_rectangles,
             line_texts=line_texts
         )
+
+    @staticmethod
+    def load_generated_single_line_dataset(
+            directory: PathLike,
+            image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor):
+
+        images, texts = generated_single_line.load_dataset(directory)
+        line_image_indexes = list(range(len(images)))
+        line_rectangles = [Rectangle.of_xywh(0, 0, image.width, image.height) for image in images]
+        return RecognitionDataset(
+            image_to_tensor=image_to_tensor,
+            images=images,
+            line_image_indexes=line_image_indexes,
+            line_rectangles=line_rectangles,
+            line_texts=texts)
 
 
 class RecognitionDatasetWithAugmentation(RecognitionDataset):

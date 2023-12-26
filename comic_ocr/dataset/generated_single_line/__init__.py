@@ -6,7 +6,7 @@ from comic_ocr.dataset.generated_single_line.generator import SingleLineGenerato
 from comic_ocr.utils import files
 
 
-def load_dataset(dataset_dir: str) -> Tuple[List[Image.Image], List[str]]:
+def load_dataset(dataset_dir: files.PathLike) -> Tuple[List[Image.Image], List[str]]:
     """Load the dataset created by `create_dataset()`
 
     Args:
@@ -23,7 +23,7 @@ def load_dataset(dataset_dir: str) -> Tuple[List[Image.Image], List[str]]:
 
 
 def create_dataset(
-        dataset_dir: str,
+        dataset_dir: files.PathLike,
         generator: Optional[SingleLineGenerator] = None,
         output_count: Optional[int] = 100,
 ):
@@ -38,3 +38,11 @@ def create_dataset(
         image, text = generator.generate(i)
         image.save(path / 'image' / '{:04}.jpg'.format(i))
         files.write_json_dict(path / 'text_annotation' / '{:04}.json'.format(i), {'text': text})
+
+
+if __name__ == '__main__':
+    from comic_ocr.utils.files import get_path_project_dir
+
+    dataset_dir = get_path_project_dir('data/output/generated_single_line_test')
+    create_dataset(dataset_dir, output_count=3)
+    print(dataset_dir)

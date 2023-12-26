@@ -25,7 +25,6 @@ def test_loading_annotated_dataset():
 
 def test_loading_generated_dataset():
     dataset = RecognitionDataset.load_generated_dataset(get_path_example_dir('manga_generated'))
-
     assert len(dataset) > 0
 
     row = dataset[0]
@@ -40,6 +39,21 @@ def test_loading_generated_dataset():
     assert row['text_length'].shape[0] == 1
     assert row['text_length'].tolist() == [len('Hehe')]
 
+
+def test_loading_generated_single_line_dataset():
+    dataset = RecognitionDataset.load_generated_single_line_dataset(get_path_example_dir('line_generated'))
+    assert len(dataset) == 2
+
+    row = dataset[0]
+    assert row['image'].shape[0] == 3
+    assert row['image'].shape[1] == 35
+    assert row['image'].shape[2] == 79
+
+    assert row['text_encoded'].shape[0] == dataset._text_max_length
+    assert row['text_encoded'].tolist() == encode('Who is he?', padded_output_size=dataset.text_max_length)
+
+    assert row['text_length'].shape[0] == 1
+    assert row['text_length'].tolist() == [len('Who is he?')]
 
 def test_dataset_shuffle():
     dataset = RecognitionDataset.load_generated_dataset(get_path_example_dir('manga_generated'))
