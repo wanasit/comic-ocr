@@ -146,7 +146,8 @@ class RecognitionDataset(Dataset):
     @staticmethod
     def load_annotated_dataset(
             directory: PathLike,
-            image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor
+            image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor,
+            expand_annotated_line: int | Tuple[int, int] = 1
     ):
         images, image_texts = annotated_manga.load_line_annotated_dataset(directory)
 
@@ -159,7 +160,7 @@ class RecognitionDataset(Dataset):
                     continue
 
                 line_image_indexes.append(i)
-                line_rectangles.append(line.location)
+                line_rectangles.append(line.location.expand(expand_annotated_line))
                 line_texts.append(line.text)
 
         return RecognitionDataset(
@@ -173,7 +174,8 @@ class RecognitionDataset(Dataset):
     @staticmethod
     def load_generated_dataset(
             directory: PathLike,
-            image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor
+            image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor,
+            expand_annotated_line: int | Tuple[int, int] = 1
     ):
         images, image_texts, _ = generated_manga.load_dataset(directory)
 
@@ -186,7 +188,7 @@ class RecognitionDataset(Dataset):
                     continue
 
                 line_image_indexes.append(i)
-                line_rectangles.append(line.location)
+                line_rectangles.append(line.location.expand(expand_annotated_line))
                 line_texts.append(line.text)
 
         return RecognitionDataset(
@@ -348,18 +350,20 @@ class RecognitionDatasetWithAugmentation(RecognitionDataset):
     def load_generated_dataset(
             directory: str,
             image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor,
+            expand_annotated_line: int | Tuple[int, int] = 1,
             **kwargs
     ):
-        dataset = RecognitionDataset.load_generated_dataset(directory, image_to_tensor)
+        dataset = RecognitionDataset.load_generated_dataset(directory, image_to_tensor, expand_annotated_line)
         return RecognitionDatasetWithAugmentation.of_dataset(dataset, **kwargs)
 
     @staticmethod
     def load_annotated_dataset(
             directory: str,
             image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor,
+            expand_annotated_line: int | Tuple[int, int] = 1,
             **kwargs
     ):
-        dataset = RecognitionDataset.load_annotated_dataset(directory, image_to_tensor)
+        dataset = RecognitionDataset.load_annotated_dataset(directory, image_to_tensor, expand_annotated_line)
         return RecognitionDatasetWithAugmentation.of_dataset(dataset, **kwargs)
 
 

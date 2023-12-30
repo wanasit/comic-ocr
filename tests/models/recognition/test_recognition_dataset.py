@@ -13,7 +13,7 @@ def test_loading_annotated_dataset():
     row = dataset[0]
     assert row.keys() == {'image', 'text', 'text_length', 'text_encoded'}
     assert row['image'].shape[0] == 3
-    assert row['image'].shape[1] == 16
+    assert row['image'].shape[1] == 18
     assert row['image'].shape[2] == 87
 
     assert row['text_encoded'].shape[0] == dataset.text_max_length
@@ -30,8 +30,8 @@ def test_loading_generated_dataset():
     row = dataset[0]
     assert row.keys() == {'image', 'text', 'text_length', 'text_encoded'}
     assert row['image'].shape[0] == 3
-    assert row['image'].shape[1] == 20
-    assert row['image'].shape[2] == 37
+    assert row['image'].shape[1] == 22
+    assert row['image'].shape[2] == 39
 
     assert row['text_encoded'].shape[0] == dataset._text_max_length
     assert row['text_encoded'].tolist() == encode('Hehe', padded_output_size=dataset.text_max_length)
@@ -54,6 +54,7 @@ def test_loading_generated_single_line_dataset():
 
     assert row['text_length'].shape[0] == 1
     assert row['text_length'].tolist() == [len('Who is he?')]
+
 
 def test_dataset_shuffle():
     dataset = RecognitionDataset.load_generated_dataset(get_path_example_dir('manga_generated'))
@@ -116,13 +117,16 @@ def test_dataset_loader():
     train_dataloader = dataset.loader()
     batch = next(iter(train_dataloader))
 
-    assert batch['image'].shape == (1, 3, 16, 87)
+    assert batch['image'].shape == (1, 3, 18, 89)
     assert batch['text_encoded'].shape == (1, 23)
     assert batch['text_length'].shape == (1, 1)
 
 
 def test_dataset_with_augmentation_creation():
-    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'))
+    dataset = RecognitionDataset.load_annotated_dataset(
+        get_path_example_dir('manga_annotated'),
+        expand_annotated_line=0
+    )
     assert dataset.get_line_image(0).size == (87, 16)  # should be scaled to (130, 24)
     assert dataset.get_line_image(1).size == (95, 20)  # should be scaled to (114, 24)
     assert dataset.get_line_image(2).size == (42, 14)  # should be scaled to (72, 24)
@@ -158,7 +162,10 @@ def test_dataset_with_augmentation_creation():
 
 
 def test_dataset_with_augmentation_transform():
-    dataset = RecognitionDataset.load_annotated_dataset(get_path_example_dir('manga_annotated'))
+    dataset = RecognitionDataset.load_annotated_dataset(
+        get_path_example_dir('manga_annotated'),
+        expand_annotated_line=0
+    )
     assert dataset.get_line_image(0).size == (87, 16)  # should be scaled to (130, 24)
     assert dataset.get_line_image(1).size == (95, 20)  # should be scaled to (114, 24)
     assert dataset.get_line_image(2).size == (42, 14)  # should be scaled to (72, 24)
@@ -180,7 +187,10 @@ def test_dataset_with_augmentation_transform():
 
 
 def test_dataset_with_augmentation_loader():
-    dataset = RecognitionDatasetWithAugmentation.load_annotated_dataset(get_path_example_dir('manga_annotated'))
+    dataset = RecognitionDatasetWithAugmentation.load_annotated_dataset(
+        get_path_example_dir('manga_annotated'),
+        expand_annotated_line=0,
+    )
     assert dataset.get_line_image(0).size == (87, 16)  # should be scaled to (108, 20)
     assert dataset.get_line_image(1).size == (95, 20)
     assert dataset.get_line_image(2).size == (42, 14)  # should be scaled to (60, 20)
@@ -193,8 +203,11 @@ def test_dataset_with_augmentation_loader():
 
 
 def test_dataset_with_augmentation_loader_with_batch_height():
-    dataset = RecognitionDatasetWithAugmentation.load_annotated_dataset(get_path_example_dir('manga_annotated'),
-                                                                        batch_height=24)
+    dataset = RecognitionDatasetWithAugmentation.load_annotated_dataset(
+        get_path_example_dir('manga_annotated'),
+        expand_annotated_line=0,
+        batch_height=24,
+    )
     assert dataset.get_line_image(0).size == (87, 16)  # should be scaled to (130, 24)
     assert dataset.get_line_image(1).size == (95, 20)  # should be scaled to (114, 24)
     assert dataset.get_line_image(2).size == (42, 14)  # should be scaled to (72, 24)
@@ -217,10 +230,13 @@ def test_dataset_with_augmentation_loader_with_batch_height():
 
 
 def test_dataset_with_augmentation_loader_with_random_padding():
-    dataset = RecognitionDatasetWithAugmentation.load_annotated_dataset(get_path_example_dir('manga_annotated'),
-                                                                        batch_height=24,
-                                                                        choices_padding_width=[4],
-                                                                        choices_padding_height=[2])
+    dataset = RecognitionDatasetWithAugmentation.load_annotated_dataset(
+        get_path_example_dir('manga_annotated'),
+        expand_annotated_line=0,
+        batch_height=24,
+        choices_padding_width=[4],
+        choices_padding_height=[2]
+    )
     assert dataset.get_line_image(0).size == (87, 16)  # should be padded to (91, 18), then scaled to (121, 24)
     assert dataset.get_line_image(1).size == (95, 20)  # should be padded to (99, 22), then scaled to (108, 24)
     assert dataset.get_line_image(2).size == (42, 14)  # should be padded to (46, 16), then scaled to (69, 24)
