@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "comic-ocr"
-version = "0.1.4"
+version = "0.1.5"
 description = "An OCR library comic and manga"
 authors = ["Wanasit T"]
 license = "MIT License"
