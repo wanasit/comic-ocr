@@ -2,9 +2,8 @@ from comic_ocr import Rectangle
 
 from comic_ocr.models import localization
 from comic_ocr.models import recognition
-from comic_ocr.types import Size
+from comic_ocr.model import ComicOCRModel
 from comic_ocr.utils.files import load_image, get_path_project_dir
-from comic_ocr.utils import image_with_annotations
 
 
 def test_trained_localization_model_high_level_metrics():

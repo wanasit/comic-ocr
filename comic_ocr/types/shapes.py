@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Tuple, Union, List, Iterable
+from typing import Tuple, Union, List, Iterable, Sequence
 
 
 class Point(tuple):
@@ -28,8 +28,7 @@ class Point(tuple):
 
 
 class Size(tuple):
-    """
-    A tuple of [w, h] with helper functions
+    """A tuple of [w, h] with helper functions.
     """
 
     def __new__(cls, size: SizeLike):
@@ -53,8 +52,8 @@ class Size(tuple):
 
 
 class Rectangle(tuple):
-    """
-    A tuple of [x0, y0, x1, y1] with helper functions to manipulate the shape.
+    """A tuple of [x0, y0, x1, y1] with helper functions to manipulate the shape.
+
     It is compatible with Pillow function that require rectangle or box.
     e.g. draw.rectangle(rect) or image.crop(rect)
     """
@@ -122,6 +121,28 @@ class Rectangle(tuple):
         intersect_size = rect_intersect.size.value
         union_size = rect_a.size.value + rect_b.size.value - intersect_size
         return intersect_size / union_size
+
+    @staticmethod
+    def match(rects: Sequence[Rectangle], baseline_rects: Sequence[Rectangle]) \
+            -> Tuple[Sequence[Tuple[int, int]], Sequence[int], Sequence[int]]:
+        matched_pairs = []
+        unmatched_rects = []
+        matched_base_line_indexes = set()
+
+        for i, rect in enumerate(rects):
+            for j, baseline_rect in enumerate(baseline_rects):
+                if j in matched_base_line_indexes:
+                    continue
+                if rect.can_represent(baseline_rect):
+                    matched_pairs.append((i, j))
+                    matched_base_line_indexes.add(j)
+                    break
+            else:
+                unmatched_rects.append(i)
+
+        unmatched_baseline_rects = [i for i, l in enumerate(baseline_rects) if
+                                    i not in matched_base_line_indexes]
+        return matched_pairs, unmatched_rects, unmatched_baseline_rects
 
     @property
     def box(self) -> Tuple[int, int, int, int]:
@@ -217,6 +238,7 @@ class Rectangle(tuple):
 
     def __str__(self):
         return f'Rect({self.width, self.height}, at={self[0], self[1]})'
+
 
 PointLike = Union[
     Tuple[int, int],

@@ -69,7 +69,7 @@ def calculate_high_level_metrics(
             break
         baseline_line_locations = dataset.get_line_locations(i)
         line_locations = model.locate_lines(dataset.get_image(i), device=device)
-        tp, fp, fn = match_location_rectangles_with_baseline(line_locations, baseline_line_locations)
+        tp, fp, fn = Rectangle.match(line_locations, baseline_line_locations)
         tp, fp, fn = len(tp), len(fp), len(fn)
         total_tp += tp
         total_fp += fp
@@ -84,23 +84,3 @@ def calculate_high_level_metrics(
         "line_level_recall": total_tp / (total_tp + total_fn) if total_tp + total_fn > 0 else 0,
         "line_level_accuracy": total_tp / (total_tp + total_fn + total_fp) if total_tp + total_fn + total_fp > 0 else 0
     }
-
-
-def match_location_rectangles_with_baseline(locations: Iterable[Rectangle], baseline_locations: Iterable[Rectangle]):
-    matched_pairs = []
-    unmatched_locations = []
-    matched_base_line_indexes = set()
-
-    for location in locations:
-        for i, baseline_location in enumerate(baseline_locations):
-            if i in matched_base_line_indexes:
-                continue
-            if location.can_represent(baseline_location):
-                matched_pairs.append((location, baseline_location))
-                matched_base_line_indexes.add(i)
-                break
-        else:
-            unmatched_locations.append(location)
-
-    unmatched_baseline_locations = [l for i, l in enumerate(baseline_locations) if i not in matched_base_line_indexes]
-    return matched_pairs, unmatched_locations, unmatched_baseline_locations

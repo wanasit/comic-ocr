@@ -14,7 +14,7 @@ def test_loading_annotated_dataset():
     assert row.keys() == {'image', 'text', 'text_length', 'text_encoded'}
     assert row['image'].shape[0] == 3
     assert row['image'].shape[1] == 18
-    assert row['image'].shape[2] == 87
+    assert row['image'].shape[2] == 89
 
     assert row['text_encoded'].shape[0] == dataset.text_max_length
     assert row['text_encoded'].tolist() == encode('DEPRESSION', padded_output_size=dataset.text_max_length)

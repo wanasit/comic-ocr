@@ -17,12 +17,14 @@ from comic_ocr.types import Line
 from comic_ocr.utils.files import load_images_with_annotation
 from comic_ocr.utils.nb_annotation import lines_from_nb_annotation_data
 
+AnnotatedMangaDataset = Tuple[List[Image], List[List[Line]]]
+
 
 def load_line_annotated_dataset(
         dataset_dir: str,
         include_empty_text: bool = False,
         skip_empty_check: bool = False
-) -> Tuple[List[Image], List[List[Line]]]:
+) -> AnnotatedMangaDataset:
     """Load dataset with annotation-per text line
 
     Args:
@@ -49,5 +51,6 @@ def load_line_annotated_dataset(
 
 if __name__ == '__main__':
     from comic_ocr.utils.files import get_path_project_dir
+
     images, lines = load_line_annotated_dataset(get_path_project_dir('data/manga_line_annotated'))
     print(len(images), len(lines))

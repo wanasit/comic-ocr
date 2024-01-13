@@ -149,7 +149,7 @@ def _draw_non_overlap_text_areas(
             text_rect = text_area.text_rect
 
             if text_rect in bound:
-                if not any(rect for rect in drawn_rects if Rectangle.is_overlap(text_rect, rect)):
+                if not any(rect for rect in drawn_rects if Rectangle.is_overlap(text_rect, rect.expand(10))):
                     drawn_rects.append(text_rect)
                     output.append(text_area)
                     text_area.draw(image)
