@@ -15,6 +15,7 @@ import comic_ocr.dataset.generated_manga as generated_manga
 import comic_ocr.dataset.generated_single_line as generated_single_line
 
 from comic_ocr.models.recognition import encode
+from comic_ocr.models import localization
 from comic_ocr.models import transforms
 from comic_ocr.types import Rectangle, PathLike
 
@@ -32,16 +33,16 @@ class RecognitionDataset(Dataset):
                  images: List[Image.Image],
                  line_image_indexes: List[int],
                  line_rectangles: List[Rectangle],
-                 line_texts: List[str],
+                 line_texts: List[Optional[str]],
                  image_to_tensor: transforms.ImageToTensorTransformFunc):
         assert len(line_image_indexes) == len(line_rectangles) == len(line_texts)
 
         self._images = images
         self._line_image_indexes = line_image_indexes
         self._line_rectangles = line_rectangles
-        self._line_texts = [t.strip() for t in line_texts]
+        self._line_texts = [t.strip() if t else None for t in line_texts]
         self._image_to_tensor = image_to_tensor
-        self._text_max_length = max((len(t) for t in self._line_texts))
+        self._text_max_length = max((len(t) if t else 0 for t in self._line_texts))
 
     def __len__(self):
         return len(self._line_texts)
@@ -49,6 +50,11 @@ class RecognitionDataset(Dataset):
     def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
 
         text = self._line_texts[idx]
+        is_negative = False
+        if text is None:
+            text = ''
+            is_negative = True
+
         text_length = torch.tensor([len(text)])
         text_encoded = torch.tensor(encode(text=text, padded_output_size=self.text_max_length))
 
@@ -58,7 +64,8 @@ class RecognitionDataset(Dataset):
             'image': image,
             'text': text,
             'text_length': text_length,
-            'text_encoded': text_encoded
+            'text_encoded': text_encoded,
+            'is_negative': torch.tensor([is_negative])
         }
 
     @property
@@ -214,6 +221,50 @@ class RecognitionDataset(Dataset):
             line_rectangles=line_rectangles,
             line_texts=texts)
 
+    @staticmethod
+    def create_localized_dataset(
+            directory: PathLike,
+            localization_model: localization.LocalizationModel,
+            include_false_predictions: bool = True,
+            include_missed_annotations: bool = True,
+            image_to_tensor: transforms.ImageToTensorTransformFunc = transforms.image_to_tensor,
+    ):
+        images, image_texts = annotated_manga.load_line_annotated_dataset(directory)
+
+        line_image_indexes = []
+        line_rectangles = []
+        line_texts = []
+        for i, (image, annotated_lines) in enumerate(zip(images, image_texts)):
+            predicted_rects = localization_model.locate_lines(image)
+
+            match_pairs, unmatched_predicted_indexes, unmatched_annotated_indexes = \
+                Rectangle.match(predicted_rects, [l.location for l in annotated_lines])
+
+            for pred_idx, annotated_idx in match_pairs:
+                line_image_indexes.append(i)
+                line_rectangles.append(predicted_rects[pred_idx])
+                line_texts.append(annotated_lines[annotated_idx].text)
+
+            if include_missed_annotations:
+                for annotated_idx in unmatched_annotated_indexes:
+                    line_image_indexes.append(i)
+                    line_rectangles.append(annotated_lines[annotated_idx].location)
+                    line_texts.append(annotated_lines[annotated_idx].text)
+
+            if include_false_predictions:
+                for pred_idx in unmatched_predicted_indexes:
+                    line_image_indexes.append(i)
+                    line_rectangles.append(predicted_rects[pred_idx])
+                    line_texts.append(None)
+
+        return RecognitionDataset(
+            image_to_tensor=image_to_tensor,
+            images=images,
+            line_image_indexes=line_image_indexes,
+            line_rectangles=line_rectangles,
+            line_texts=line_texts
+        )
+
 
 class RecognitionDatasetWithAugmentation(RecognitionDataset):
     """A torch dataset for training a recognition model.
@@ -290,6 +341,7 @@ class RecognitionDatasetWithAugmentation(RecognitionDataset):
                 'text': texts,
                 'text_length': torch.stack([b['text_length'] for b in batch]),
                 'text_encoded': torch.stack([b['text_encoded'] for b in batch]),
+                'is_negative': torch.stack([b['is_negative'] for b in batch])
             }
 
         return torch.utils.data.DataLoader(self, collate_fn=collate_fn, **kwargs)

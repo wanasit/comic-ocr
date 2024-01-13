@@ -1,5 +1,8 @@
+from typing import List, Dict
+
 import torch
 
+from comic_ocr.models import localization
 from comic_ocr.models.recognition import encode
 from comic_ocr.models.recognition.recognition_dataset import RecognitionDataset, RecognitionDatasetWithAugmentation
 from comic_ocr.utils.files import get_path_example_dir
@@ -11,7 +14,7 @@ def test_loading_annotated_dataset():
     assert len(dataset) > 0
 
     row = dataset[0]
-    assert row.keys() == {'image', 'text', 'text_length', 'text_encoded'}
+    assert row.keys() == {'image', 'text', 'text_length', 'text_encoded', 'is_negative'}
     assert row['image'].shape[0] == 3
     assert row['image'].shape[1] == 18
     assert row['image'].shape[2] == 89
@@ -28,7 +31,7 @@ def test_loading_generated_dataset():
     assert len(dataset) > 0
 
     row = dataset[0]
-    assert row.keys() == {'image', 'text', 'text_length', 'text_encoded'}
+    assert row.keys() == {'image', 'text', 'text_length', 'text_encoded', 'is_negative'}
     assert row['image'].shape[0] == 3
     assert row['image'].shape[1] == 22
     assert row['image'].shape[2] == 39
@@ -54,6 +57,12 @@ def test_loading_generated_single_line_dataset():
 
     assert row['text_length'].shape[0] == 1
     assert row['text_length'].tolist() == [len('Who is he?')]
+
+
+def test_creating_localized_dataset_dataset():
+    model = localization.BasicLocalizationModel()
+    dataset = RecognitionDataset.create_localized_dataset(get_path_example_dir('manga_annotated'), model)
+    assert len(dataset) > 0
 
 
 def test_dataset_shuffle():

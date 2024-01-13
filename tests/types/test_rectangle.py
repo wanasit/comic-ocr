@@ -101,6 +101,7 @@ def test_match_with_near_perfect_fits():
     assert len(fp) == 0
     assert len(fn) == 0
 
+
 def test_match_with_miss_matches():
     rect_baseline_a = Rectangle.of_xywh(10, 10, 100, 10)
     rect_a = Rectangle.of_xywh(10, 10, 100, 10)
