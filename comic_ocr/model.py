@@ -4,7 +4,7 @@ from comic_ocr import hub, types
 from comic_ocr.models import localization
 from comic_ocr.models import recognition
 from comic_ocr.dataset import annotated_manga
-from comic_ocr.types import Rectangle, Percentage, Line
+from comic_ocr.types import Rectangle, Percentage, Line, PathLike
 
 
 class ComicOCRModel:
@@ -16,12 +16,20 @@ class ComicOCRModel:
         self._recognition_model = recognition_model
 
     @staticmethod
-    def download_default(show_download_progress=True, force_reload=False):
+    def download_default(show_download_progress=True, force_reload=False) -> 'ComicOCRModel':
         localization_model = hub.download_localization_model(
             progress=show_download_progress, force_reload=force_reload, test_executing_model=True)
         recognition_model = hub.download_recognition_model(
             progress=show_download_progress, force_reload=force_reload, test_executing_model=True)
 
+        return ComicOCRModel(localization_model, recognition_model)
+
+    @staticmethod
+    def load_local(
+            localization_model_path: PathLike = localization.DEFAULT_LOCAL_TRAINED_MODEL_FILE,
+            recognition_model_path: PathLike = recognition.DEFAULT_LOCAL_TRAINED_MODEL_FILE) -> 'ComicOCRModel':
+        localization_model = localization.load_model(localization_model_path)
+        recognition_model = recognition.load_model(recognition_model_path)
         return ComicOCRModel(localization_model, recognition_model)
 
     def read_paragraphs(self, image: types.ImageInput) -> List[types.Paragraph]:
@@ -60,8 +68,6 @@ class ModelAccuracy:
     num_chars_predicted: int = 0
     num_chars_annotated: int = 0
     num_chars_correct: int = 0
-
-
 
     def include(self, predicted_lines: Sequence[Line], annotated_lines: Sequence[Line]):
         matched_indexes, unmatched_predicted_indexes, unmatched_annotated_indexes = Rectangle.match(
@@ -121,7 +127,11 @@ class ModelAccuracy:
 
 if __name__ == '__main__':
     from comic_ocr.utils.files import get_path_project_dir
+
     model = ComicOCRModel.download_default()
+    # model = ComicOCRModel.load_local(
+    #     recognition_model_path=get_path_project_dir('data/output/models/recognition_crnn_small.bin'),
+    # )
 
     # dataset = annotated_manga.load_line_annotated_dataset(get_path_project_dir('example/manga_annotated'))
     dataset = annotated_manga.load_line_annotated_dataset(get_path_project_dir('data/manga_line_annotated'))
