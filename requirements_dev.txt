@@ -1,5 +1,0 @@
--r requirements.txt
-jupyter
-matplotlib
-pytest>=7
-labelling-notebook

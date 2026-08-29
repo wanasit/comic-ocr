@@ -29,14 +29,14 @@ git lfs install
 git lfs pull
 ```
 
-The project uses `poetry` (`pyproject.toml`) for the configuration:
+The project uses `uv` (`pyproject.toml`) for dependency management and development:
 ```bash
-# To install and check dependencies after update pyproject.toml
-poetry install
+# To install and sync dependencies
+uv sync
 
 # To run tests
-poetry run pytest
+uv run pytest
 
 # To run build
-poetry build
+uv build
 ```
