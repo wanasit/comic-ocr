@@ -10,6 +10,17 @@ from comic_ocr.utils import examples
 
 @dataclass
 class SingleLineGenerator:
+    """Generates synthetic single-line text crop images with customizable fonts, colors, and padding.
+
+    Attributes:
+        choices_texts: Sequence of strings used as text samples.
+        choices_fonts: Sequence of ImageFont instances.
+        choices_padding: Sequence of padding values (in pixels) around the text.
+        choices_background_colors: Sequence of colors used for the image background.
+        choices_text_colors: Sequence of colors used for font glyph rendering.
+        random_salt: Salt string used for deterministic pseudo-random sequence generation.
+        current_random_seed: Random seed state tracker.
+    """
     choices_texts: Sequence[str]
     choices_fonts: Sequence[ImageFont.ImageFont]
     choices_padding: Sequence[int]
@@ -27,7 +38,8 @@ class SingleLineGenerator:
             choices_background_colors: Optional[Sequence[Color]] = None,
             choices_text_colors: Optional[Sequence[Color]] = None,
             random_salt: str = ''
-    ):
+    ) -> 'SingleLineGenerator':
+        """Factory method with fallback defaults for fonts, texts, colors, and padding."""
         choices_texts = choices_texts if choices_texts else examples.load_example_texts()
         choices_fonts = choices_fonts if choices_fonts else examples.load_example_fonts()
         choices_padding = choices_padding if choices_padding else (1, 2, 3, 3, 4, 4, 5, 5)
@@ -46,6 +58,7 @@ class SingleLineGenerator:
             self,
             random_seed: Optional[Any] = None,
     ) -> Tuple[Image.Image, str]:
+        """Generates a single (image_crop, text) pair."""
         if not random_seed:
             random_seed = self.current_random_seed
 
@@ -70,6 +83,7 @@ def generate(
         choices_background_colors: Sequence[Color],
         choices_text_colors: Sequence[Color],
 ) -> Tuple[Image.Image, str]:
+    """Renders a single line of text with random font, padding, text color, and background color."""
     text = r.choice(choices_texts)
     font = r.choice(choices_fonts)
     padding = r.choice(choices_padding)

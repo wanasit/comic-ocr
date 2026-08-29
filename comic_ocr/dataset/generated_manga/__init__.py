@@ -45,6 +45,19 @@ def create_dataset(
         output_size: Optional[Size] = None,
         output_count: Optional[int] = 100,
 ):
+    """Generates and writes a synthetic manga dataset to disk.
+
+    Creates three subdirectories in `dataset_dir`:
+    - `image/`: Generated comic page images (.jpg).
+    - `image_mask/`: Multi-channel semantic segmentation masks (.jpg) with char, line, and rect levels.
+    - `line_annotation/`: JSON line annotation files in labelling-notebook format.
+
+    Args:
+        dataset_dir: Destination directory path.
+        generator: Optional MangaGenerator instance (defaults to default MangaGenerator.create()).
+        output_size: Optional target Size for generated pages.
+        output_count: Number of synthetic pages to generate (default: 100).
+    """
     generator = generator if generator else MangaGenerator.create()
 
     path = Path(dataset_dir)
@@ -63,19 +76,20 @@ def create_dataset(
 
 
 def create_image_mask(
-        image,
-        text_areas,
+        image: Image.Image,
+        text_areas: List[TextArea],
         color_background: Color = (0, 0, 0),
         color_char: Color = (int(255 * DEFAULT_CHAR_ALPHA),) * 3,
         color_line: Color = (int(255 * DEFAULT_LINE_ALPHA),) * 3,
         color_rect: Color = (int(255 * DEFAULT_RECT_ALPHA),) * 3,
-):
-    image = Image.new('RGB', image.size, color_background)
+) -> Image.Image:
+    """Creates a multi-intensity grayscale/RGB segmentation mask for character, line, and paragraph regions."""
+    mask = Image.new('RGB', image.size, color_background)
     for text_area in text_areas:
-        text_area.draw_text_rect(image, fill=color_rect)
-        text_area.draw_line_rects(image, fill=color_line)
-        text_area.draw_text(image, fill=color_char)
-    return image.convert('RGB')
+        text_area.draw_text_rect(mask, fill=color_rect)
+        text_area.draw_line_rects(mask, fill=color_line)
+        text_area.draw_text(mask, fill=color_char)
+    return mask
 
 
 if __name__ == "__main__":

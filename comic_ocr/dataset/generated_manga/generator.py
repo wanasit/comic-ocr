@@ -15,6 +15,17 @@ from comic_ocr.utils import examples
 
 @dataclass
 class MangaGenerator():
+    """Generates synthetic comic pages with speech bubbles on background artwork.
+
+    Attributes:
+        choices_drawings: List of PIL Images used as panel artwork backgrounds.
+        choices_texts: List of text strings/quotes to place inside speech bubbles.
+        choices_fonts: List of PIL ImageFont instances used for text rendering.
+        choices_text_counts: List of possible numbers of text areas per generated page.
+        random_salt: String salt mixed with random seeds for reproducible randomization.
+        current_random_seed: State tracking for sequential generation.
+        output_size: Default pixel dimensions (Size) for generated page images.
+    """
     choices_drawings: List[Image.Image]
     choices_texts: List[str]
     choices_fonts: List[ImageFont.ImageFont]
@@ -31,7 +42,8 @@ class MangaGenerator():
             choices_fonts: Optional[List[ImageFont.ImageFont]] = None,
             choices_text_counts: Optional[List[int]] = None,
             random_salt: str = ''
-    ):
+    ) -> 'MangaGenerator':
+        """Factory method with fallback defaults to example drawings, fonts, and texts."""
         choices_drawings = choices_drawings if choices_drawings else examples.load_example_drawing()
         choices_texts = choices_texts if choices_texts else examples.load_example_texts()
         choices_fonts = choices_fonts if choices_fonts else examples.load_example_fonts()
@@ -44,7 +56,8 @@ class MangaGenerator():
             random_salt=random_salt
         )
 
-    def generate(self, random_seed: Optional[Any] = None, output_size: Optional[Size] = None):
+    def generate(self, random_seed: Optional[Any] = None, output_size: Optional[Size] = None) -> Tuple[Image.Image, List[TextArea]]:
+        """Generates a single comic page image and its corresponding TextArea metadata."""
         if not random_seed:
             random_seed = self.current_random_seed
 
@@ -70,6 +83,7 @@ def generate(
         choices_text_counts: List[int] = (5,),
         output_size=(768, 768)
 ) -> Tuple[Image.Image, List[TextArea]]:
+    """Synthesizes a comic image by compositing background artwork and placing non-overlapping text bubbles."""
     image: Image.Image = Image.new('RGB', output_size, '#ffffff')
     _draw_random_drawing(random, image, choices_drawings)
 

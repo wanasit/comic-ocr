@@ -11,6 +11,21 @@ _DUMMY_DRAW = ImageDraw.Draw(Image.new('RGB', (1, 1)))
 
 @dataclass
 class TextArea:
+    """Represents a rendered text block with wrapping, line bounds, and paragraph bounds.
+
+    Attributes:
+        xy: Top-left coordinate (Point) where the text area begins.
+        text: Raw text string (may contain newlines).
+        padding_x: Horizontal padding added to each line width.
+        padding_y: Vertical padding for the overall text area.
+        padding_line_ascent: Extra padding above each line's glyph bounding box.
+        padding_line_decent: Extra padding below each line's glyph bounding box.
+        font: PIL ImageFont used for measurement and rendering.
+        text_fill: Color or hex string used for rendering characters.
+        text_line_space: Spacing in pixels between lines of text.
+        max_width: Maximum pixel width allowed before wrapping lines.
+        max_height: Optional maximum height.
+    """
     xy: Point = field()
     text: str = field()
 
@@ -28,7 +43,7 @@ class TextArea:
 
     @staticmethod
     def text_size(text: str, font: ImageFont.ImageFont, spacing: int = 0) -> Tuple[int, int]:
-        """Returns (width, height) for single-line or multi-line text using font metrics and bounding boxes."""
+        """Returns (width, height) in pixels for single-line or multi-line text using font metrics and bounding boxes."""
         if not text:
             return 0, 0
         lines = text.split('\n')
@@ -45,17 +60,20 @@ class TextArea:
 
     @cached_property
     def wrapped_text_lines(self) -> List[str]:
+        """Returns the list of text lines after applying word-wrapping according to max_width."""
         if self.max_width and self.max_width > 0:
             return _text_wrap(self.text, font=self.font, max_width=self.max_width)
         return [self.text]
 
     @cached_property
-    def wrapped_text(self):
+    def wrapped_text(self) -> str:
+        """Returns the wrapped text joined by newline characters."""
         return '\n'.join(self.wrapped_text_lines)
 
     # noinspection PyUnresolvedReferences
     @cached_property
     def text_lines(self) -> List[Line]:
+        """Calculates exact Line objects (text and bounding Rectangle) for each wrapped line."""
         lines = self.wrapped_text_lines
         if not lines:
             return []
@@ -84,17 +102,20 @@ class TextArea:
 
     @cached_property
     def text_rect(self) -> Rectangle:
+        """The union bounding Rectangle spanning all text lines."""
         if not self.text_lines:
             return Rectangle.of_size((0, 0), at=self.xy)
         return Rectangle.union_bounding_rect([l.location for l in self.text_lines])
 
-    def draw(self, image: Drawable):
+    def draw(self, image: Drawable) -> Rectangle:
+        """Draws background shape (e.g. bubble or rect) followed by text onto the given image."""
         draw = to_draw(image)
         self.draw_background(draw)
         self.draw_text(draw)
         return self.text_rect
 
     def draw_text(self, image: Drawable, fill: Optional[Color] = None):
+        """Renders the text characters onto the image."""
         draw = to_draw(image)
         fill = fill if fill else self.text_fill
         lines = self.wrapped_text_lines
@@ -111,17 +132,20 @@ class TextArea:
                             spacing=self.text_line_space)
 
     def draw_text_rect(self, image: Drawable, fill: Optional[Color] = None):
+        """Draws a filled rectangle over the overall paragraph text_rect (useful for mask generation)."""
         draw = to_draw(image)
         fill = fill if fill else self.text_fill
         draw.rectangle(self.text_rect, fill=fill)
 
     def draw_line_rects(self, image: Drawable, fill: Optional[Color] = None):
+        """Draws filled rectangles over each individual line_rect (useful for mask generation)."""
         draw = to_draw(image)
         fill = fill if fill else self.text_fill
         for line_location in self.text_lines:
             draw.rectangle(line_location.location, fill=fill)
 
     def draw_background(self, image: Drawable):
+        """Hook method overridden by subclasses (e.g., TextBubble, TextRect) to render backgrounds."""
         pass
 
 

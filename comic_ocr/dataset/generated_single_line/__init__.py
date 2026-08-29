@@ -27,7 +27,17 @@ def create_dataset(
         generator: Optional[SingleLineGenerator] = None,
         output_count: Optional[int] = 100,
 ):
-    """Creates dataset in the directory."""
+    """Generates and writes a single-line OCR training dataset to disk.
+
+    Creates two subdirectories in `dataset_dir`:
+    - `image/`: Cropped single-line text images (.jpg).
+    - `text_annotation/`: JSON files containing the ground truth transcription string `{"text": "..."}`.
+
+    Args:
+        dataset_dir: Destination directory path.
+        generator: Optional SingleLineGenerator instance.
+        output_count: Number of single-line text crops to generate.
+    """
     generator = generator if generator else SingleLineGenerator.create()
 
     path = Path(dataset_dir)
