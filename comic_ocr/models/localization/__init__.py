@@ -39,7 +39,7 @@ def load_model(
         test_executing_model: bool = True
 ) -> LocalizationModel:
     logger.info(f'Loading localization model [{model_file}]')
-    model: LocalizationModel = torch.load(model_file)
+    model: LocalizationModel = torch.load(model_file, weights_only=False)
 
     if test_executing_model:
         logger.info(f'Testing the model')

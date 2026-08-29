@@ -48,7 +48,7 @@ def train(
     optimizer = optimizer if optimizer else torch.optim.SGD(
         model.parameters(), lr=0.02, nesterov=True, weight_decay=1e-5, momentum=0.9)
     lr_scheduler = lr_scheduler if lr_scheduler else torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, verbose=True, patience=3)
+        optimizer, patience=3)
 
     validation_metrics: train_helpers.HistoricalMetrics = collections.defaultdict(list)
     training_metrics: train_helpers.HistoricalMetrics = collections.defaultdict(list)

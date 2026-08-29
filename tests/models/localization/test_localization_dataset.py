@@ -76,7 +76,7 @@ def test_load_line_annotated_manga_dataset_with_augmentation():
 
     # dataset.get_mask_char(0).show()
 
-    train_dataloader = dataset.loader(batch_size=2, shuffle=False, num_workers=1)
+    train_dataloader = dataset.loader(batch_size=2, shuffle=False, num_workers=0)
     batch = next(iter(train_dataloader))
 
     assert batch['input'].shape == (2, 3, 500, 400)
@@ -95,7 +95,7 @@ def test_load_generated_manga_dataset_with_augmentation():
     assert dataset.get_mask_char(0).size == (768, 768)
     assert dataset.get_mask_line(0).size == (768, 768)
 
-    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=0)
     batch = next(iter(train_dataloader))
 
     assert batch['input'].shape == (2, 3, 500, 500)
@@ -114,8 +114,8 @@ def test_shared_random_seed_for_cropping():
     assert len(dataset_a) == 3
     assert len(dataset_b) == 3
 
-    train_dataloader_a = dataset_a.loader(batch_size=2, shuffle=False, num_workers=1)
-    train_dataloader_b = dataset_b.loader(batch_size=2, shuffle=False, num_workers=1)
+    train_dataloader_a = dataset_a.loader(batch_size=2, shuffle=False, num_workers=0)
+    train_dataloader_b = dataset_b.loader(batch_size=2, shuffle=False, num_workers=0)
     batch_a = next(iter(train_dataloader_a))
     batch_b = next(iter(train_dataloader_b))
 
@@ -133,8 +133,8 @@ def test_color_jitter():
         dataset_dir, batch_image_size=Size.of(500, 500), random_seed="test", enable_color_jitter=True,
         color_jitter_brightness=.5, color_jitter_hue=.3)
 
-    train_dataloader_no_jitter = dataset_no_jitter.loader(batch_size=2, shuffle=False, num_workers=1)
-    train_dataloader_with_jitter = dataset_with_jitter.loader(batch_size=2, shuffle=False, num_workers=1)
+    train_dataloader_no_jitter = dataset_no_jitter.loader(batch_size=2, shuffle=False, num_workers=0)
+    train_dataloader_with_jitter = dataset_with_jitter.loader(batch_size=2, shuffle=False, num_workers=0)
 
     batch_no_jitter = next(iter(train_dataloader_no_jitter))
     batch_with_jitter = next(iter(train_dataloader_with_jitter))
@@ -154,7 +154,7 @@ def test_load_dataset_with_padding_augmentation():
     assert dataset.get_mask_char(0).size == (768, 768)
     assert dataset.get_mask_line(0).size == (768, 768)
 
-    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=0)
     batch = next(iter(train_dataloader))
 
     assert batch['input'].shape == (2, 3, 500, 500)
@@ -181,7 +181,7 @@ def test_assign_dataset_with_padding_augmentation():
     assert dataset.get_mask_char(0).size == (768, 768)
     assert dataset.get_mask_line(0).size == (768, 768)
 
-    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=0)
     batch = next(iter(train_dataloader))
 
     assert batch['input'].shape == (2, 3, 500, 500)
@@ -207,7 +207,7 @@ def test_load_and_resize_generated_manga_dataset_with_augmentation(tmpdir):
     dataset = dataset.shuffle()
     assert len(dataset) > 0
 
-    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=0)
     batch = next(iter(train_dataloader))
 
     assert batch['input'].shape == (2, 3, 200, 200)
@@ -229,7 +229,7 @@ def test_resize_dataset_with_augmentation(tmpdir):
     assert dataset.get_mask_line(0).size == (707, 1000)
     assert len(dataset.get_line_locations(0)) > 0
 
-    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=0)
     batch = next(iter(train_dataloader))
 
     assert batch['input'].shape == (2, 3, 500, 500)
@@ -249,7 +249,7 @@ def test_merge_annotated_generated_dataset_with_augmentation():
     assert len(dataset) > 0
     assert len(dataset) == len(dataset_generated) + len(dataset_annotated)
 
-    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=0)
     batch = next(iter(train_dataloader))
 
     assert 'output_mask_paragraph' not in batch
@@ -270,7 +270,7 @@ def test_merge_datasets_with_different_batch_size():
     assert len(dataset) > 0
     assert len(dataset) == len(dataset_generated) + len(dataset_annotated)
 
-    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=0)
     batch = next(iter(train_dataloader))
 
     assert 'output_mask_paragraph' not in batch
@@ -286,7 +286,7 @@ def test_merge_duplicated_datasets():
     dataset = LocalizationDatasetWithAugmentation.merge(dataset_annotated, dataset_annotated, dataset_annotated)
     assert len(dataset) == len(dataset_annotated) * 3
 
-    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=1)
+    train_dataloader = dataset.loader(batch_size=2, shuffle=True, num_workers=0)
     batch = next(iter(train_dataloader))
 
     assert 'output_mask_paragraph' not in batch

@@ -44,7 +44,7 @@ def output_tensor_to_image_mask(tensor_or_array: Union[torch.Tensor, np.ndarray]
     if len(array.shape) == 3:
         array = array.mean(0)
 
-    return Image.fromarray(np.uint8(array * 255), 'L').convert('RGB')
+    return Image.fromarray(np.uint8(array * 255)).convert('RGB')
 
 
 def align_line_horizontal(block_a: Rectangle, block_b: Rectangle, x_min_margin=10, y_margin=2):

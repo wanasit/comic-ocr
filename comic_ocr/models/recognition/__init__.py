@@ -38,8 +38,8 @@ def load_model(
         model_file: PathLike = DEFAULT_LOCAL_TRAINED_MODEL_FILE,
         test_executing_model: bool = True
 ) -> RecognitionModel:
-    logger.info(f'Loading localization model [{model_file}]')
-    model: RecognitionModel = torch.load(model_file)
+    logger.info(f'Loading recognition model [{model_file}]')
+    model: RecognitionModel = torch.load(model_file, weights_only=False)
 
     if test_executing_model:
         # TODO: test the model here
