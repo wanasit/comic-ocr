@@ -11,8 +11,8 @@ def load_example_fonts() -> List[ImageFont.ImageFont]:
     return \
             [ImageFont.truetype(example_font_dir + 'Komika_Text.ttf', size=15)] + \
             [ImageFont.truetype(example_font_dir + 'Komika_Text.ttf', size=20)] + \
-            [ImageFont.truetype(example_font_dir + 'Cool Cat.ttf', size=16)] * 3 + \
-            [ImageFont.truetype(example_font_dir + 'Cool Cat.ttf', size=21)]
+            [ImageFont.truetype(example_font_dir + 'Cool_Cat.ttf', size=16)] * 3 + \
+            [ImageFont.truetype(example_font_dir + 'Cool_Cat.ttf', size=21)]
 
 
 def load_example_drawing() -> List[Image.Image]:

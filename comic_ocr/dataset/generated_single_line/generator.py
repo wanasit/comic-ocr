@@ -76,7 +76,9 @@ def generate(
     background_color = r.choice(choices_background_colors)
     text_color = r.choice(choices_text_colors)
     ascent, descent = font.getmetrics()
-    width, height = font.getsize(text)
+    bbox = font.getbbox(text)
+    width = bbox[2] - bbox[0]
+    height = bbox[3] - bbox[1]
 
     output_size = Size.of(width + padding * 2, height + descent + padding * 2)
 

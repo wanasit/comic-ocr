@@ -54,7 +54,7 @@ def create_dataset(
 
     for i in range(output_count):
         image, text_areas = generator.generate(i, output_size=output_size)
-        image_mask = _create_image_mask(image, text_areas)
+        image_mask = create_image_mask(image, text_areas)
         lines = [line for t in text_areas for line in t.text_lines]
 
         image.save(path / 'image' / '{:04}.jpg'.format(i))
@@ -62,7 +62,7 @@ def create_dataset(
         write_json_dict(path / 'line_annotation' / '{:04}.json'.format(i), lines_to_nb_annotation_data(lines))
 
 
-def _create_image_mask(
+def create_image_mask(
         image,
         text_areas,
         color_background: Color = (0, 0, 0),

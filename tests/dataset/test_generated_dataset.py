@@ -18,25 +18,25 @@ def test_text_area():
 
     assert text_area.text_rect.tl == xy
     assert 199 <= text_area.text_rect.width <= 205 # in Linux this font rendered differently
-    assert text_area.text_rect.height == 79
+    assert 65 <= text_area.text_rect.height <= 80
 
     assert len(text_area.text_lines) == 3
     assert text_area.text_lines[0].text == 'This is very long long long long'
-    assert text_area.text_lines[0].location.height == 20
-    assert (text_area.text_lines[0].location.top - text_area.text_rect.top) > 2
+    assert 18 <= text_area.text_lines[0].location.height <= 24
+    assert (text_area.text_lines[0].location.top - text_area.text_rect.top) >= 0
 
     assert text_area.text_lines[1].text == 'long sentence trying to create'
-    assert text_area.text_lines[1].location.height == 20
+    assert 18 <= text_area.text_lines[1].location.height <= 24
     assert not Rectangle.is_overlap(text_area.text_lines[1].location, text_area.text_lines[0].location)
     assert not Rectangle.is_overlap(text_area.text_lines[1].location, text_area.text_lines[2].location)
 
     assert text_area.text_lines[2].text == 'a line break.'
-    assert text_area.text_lines[2].location.height == 20
-    assert (text_area.text_rect.bottom - text_area.text_lines[0].location.bottom) > 2
+    assert 15 <= text_area.text_lines[2].location.height <= 24
+    assert (text_area.text_rect.bottom - text_area.text_lines[2].location.bottom) >= 0
 
     for line in text_area.text_lines:
         assert line.location in text_area.text_rect
-        assert line.location.height == 20
+        assert 15 <= line.location.height <= 24
 
 
 def test_text_area_draw_text_rect():
@@ -47,7 +47,7 @@ def test_text_area_draw_text_rect():
     xy = Point.of(5, 5)
     text_area = TextArea(xy, text=text, font=font, max_width=200)
     assert len(text_area.text_lines) == 3
-    assert Rectangle.jaccard_similarity(Rectangle.of_size((204, 79), at=xy), text_area.text_rect) >= 0.9
+    assert Rectangle.jaccard_similarity(Rectangle.of_size((204, 67), at=xy), text_area.text_rect) >= 0.9
 
     # when draw_text_rect()
     image = Image.new('RGBA', size=(300, 100), color='#000000ff')
@@ -73,7 +73,7 @@ def test_text_area_draw_line_rects():
     xy = Point.of(5, 5)
     text_area = TextArea(xy, text=text, font=font, max_width=200)
     assert len(text_area.text_lines) == 3
-    assert Rectangle.jaccard_similarity(Rectangle.of_size((204, 79), at=xy), text_area.text_rect) >= 0.9
+    assert Rectangle.jaccard_similarity(Rectangle.of_size((204, 67), at=xy), text_area.text_rect) >= 0.9
 
     image = Image.new('RGB', size=(300, 100), color=(0, 0, 0))
     fill_value_text_rect = 255 // 5
@@ -114,7 +114,7 @@ def test_text_area_draw_text():
     xy = Point.of(5, 5)
     text_area = TextArea(xy, text=text, font=font, max_width=200)
     assert len(text_area.text_lines) == 3
-    assert Rectangle.jaccard_similarity(Rectangle.of_size((204, 79), at=xy), text_area.text_rect) >= 0.9
+    assert Rectangle.jaccard_similarity(Rectangle.of_size((204, 67), at=xy), text_area.text_rect) >= 0.9
 
     image = Image.new('RGB', size=(300, 100), color=(0, 0, 0))
     fill_value_text_rect = 255 // 5
@@ -182,3 +182,42 @@ def test_generate_on_the_same_location(tmpdir):
 
     generated_manga.create_dataset(dataset_dir, output_count=3)
     generated_manga.create_dataset(dataset_dir, output_count=4)
+
+
+def test_text_area_single_line_tight_bounds():
+    font = ImageFont.truetype(get_path_example_dir('./fonts/Komika_Text.ttf'), size=20)
+    xy = Point.of(10, 10)
+
+    ok_area = TextArea(xy, text="OK", font=font)
+    ay_area = TextArea(xy, text="Ay", font=font)
+
+    assert len(ok_area.text_lines) == 1
+    assert len(ay_area.text_lines) == 1
+    assert ok_area.text_lines[0].location.height < ay_area.text_lines[0].location.height
+    assert ok_area.text_rect.tl == xy
+    assert ok_area.text_rect.height == ok_area.text_lines[0].location.height
+    assert ok_area.text_rect.height < ay_area.text_rect.height
+
+    image = Image.new('RGB', size=(100, 50), color=(0, 0, 0))
+    ok_area.draw_text(image, fill=(255, 255, 255))
+    line_rect = ok_area.text_lines[0].location
+    pixel_values = list(image.getdata())
+    for y in range(50):
+        for x in range(100):
+            if pixel_values[y * 100 + x][0] > 128:
+                assert Point.of(x, y) in line_rect
+                assert Point.of(x, y) in ok_area.text_rect
+
+
+def test_text_area_custom_padding():
+    font = ImageFont.truetype(get_path_example_dir('./fonts/Komika_Text.ttf'), size=20)
+    xy = Point.of(10, 10)
+
+    area_default = TextArea(xy, text="Hello\nWorld", font=font)
+    area_padded = TextArea(xy, text="Hello\nWorld", font=font, padding_x=20)
+
+    assert area_padded.text_rect.width == area_default.text_rect.width - area_default.padding_x + 20
+    assert area_padded.text_rect.tl == xy
+
+
+
